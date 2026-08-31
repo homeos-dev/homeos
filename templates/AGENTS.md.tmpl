@@ -812,6 +812,12 @@ homeos apply
 | [docker](packages/docker/) (disabled) | — | — | Container runtime. |
 | [neovim](packages/neovim/) | [dnf](plugins/dnf/) | — | Primary text editor. |
 
+## Skills
+
+| Skill | Plugin | Dependencies | Purpose |
+|---|---|---|---|
+| [frontend-design](packages/frontend-design/) | [gh-skill](plugins/gh-skill/) | — | Visual design guidance for building UI. |
+
 ## Plugins
 
 | Plugin | Source | Description |
@@ -864,6 +870,18 @@ predictable A-Z list. Alphabetical order is stable — a small edit never
 reshuffles the table or churns the diff — and lets the reader find a
 package by name. Keep it one table with no extra headings.
 
+**Skills table** — same columns and same rules as the Packages table, for
+the packages that install an **agent skill** rather than software. A skill is
+a directory of instructions an AI agent loads on demand; a package that puts
+one in place belongs here, and every other package stays in Packages. Judge by
+what the package installs, not by which plugin backs it or how it is named —
+`homeos.yml` draws no such distinction, so this split exists in the README and
+nowhere else.
+
+Omit either section — heading and table together — while it has no rows. A
+repository with no skills reads exactly as one written before the split
+existed, and the heading arrives with the first skill.
+
 **Plugins table** — one row per entry in `homeos.yml`'s `plugins`:
 
 - *Plugin*: link the name to `plugins/<name>/`.
@@ -876,12 +894,12 @@ package by name. Keep it one table with no extra headings.
 
 ### Ownership boundary
 
-You own the **Packages** and **Plugins** sections; keep them in sync
-with `homeos.yml`. The **Notes** section is the user's: read it for
-context, but do not edit or reorder its content. Do not rename or
+You own the **Packages**, **Skills**, and **Plugins** sections; keep them
+in sync with `homeos.yml`. The **Notes** section is the user's: read it
+for context, but do not edit or reorder its content. Do not rename or
 restructure the file.
 
-If the user manually edits the Packages or Plugins sections, your next
+If the user manually edits the Packages, Skills, or Plugins sections, your next
 update will overwrite their edits. When you first create the README,
 mention this to the user and suggest they put custom prose in
 **Notes**, which is preserved.

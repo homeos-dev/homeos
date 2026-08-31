@@ -412,6 +412,25 @@ mod tests {
     }
 
     #[test]
+    fn test_render_readme_documents_skills_table() {
+        // Arrange & Act
+        let rendered = render();
+
+        // Assert — the README structure carries a Skills section of its own
+        assert!(rendered.contains("## Skills"));
+        assert!(rendered.contains("| Skill | Plugin | Dependencies | Purpose |"));
+        // Assert — a package is classified by what it installs, not by its plugin
+        assert!(rendered.contains("**Skills table**"));
+        assert!(rendered.contains("not by which plugin backs it"));
+        // Assert — a section with no rows is omitted entirely
+        assert!(rendered.contains("Omit either section"));
+        // Assert — the ownership boundary covers the new section
+        assert!(
+            rendered.contains("You own the **Packages**, **Skills**, and **Plugins** sections")
+        );
+    }
+
+    #[test]
     fn test_render_includes_git_commit_convention() {
         // Arrange & Act
         let rendered = render();
