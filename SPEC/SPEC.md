@@ -70,7 +70,7 @@ JSON cache for the "update available" notification triggered by `homeos cd`:
 ├── .gitignore             # ignores state.yml, AGENTS.md, CLAUDE.md, .last-update-check
 ├── homeos.yml
 ├── state.yml              # ignored
-├── AGENTS.md              # generated; auto-refreshed on homeos cd when binary tag changes
+├── AGENTS.md              # generated; auto-refreshed on homeos cd when binary tag changes (see Agent entry points)
 ├── CLAUDE.md              # one-line Claude Code pointer: "@AGENTS.md"
 ├── .last-update-check     # ignored
 ├── packages/
@@ -82,6 +82,24 @@ JSON cache for the "update available" notification triggered by `homeos cd`:
 1. An explicit override passed by the test harness (only used in tests)
 2. `HOMEOS_DATA_DIR` env var
 3. The OS-appropriate per-user local data directory with `homeos` appended — `~/.local/share/homeos` on Linux, `%LOCALAPPDATA%\homeos` on Windows, `~/Library/Application Support/homeos` on macOS
+
+## Agent entry points
+
+Three entry points deliver the same operating guide to an AI agent. All of them resolve to the binary's `render()` (`templates/AGENTS.md.tmpl` plus the clap-generated command reference), so the guide always matches the installed version and there is no second copy to keep in sync.
+
+| Entry | Where it lives | How the agent gets the guide |
+|---|---|---|
+| `<data_dir>/AGENTS.md` (+ `CLAUDE.md` pointer) | Data directory; written by `homeos init`, refreshed by `homeos cd` when the version marker is stale | Read automatically when the agent's working directory is the data directory (`homeos cd`, then start the agent) |
+| `homeos-manage` skill | `skills/homeos-manage/SKILL.md` in this repository; installed per agent with `gh skill install hainet50b/homeos homeos-manage --scope user --agent <agent>` | Fires when software or an agent skill is about to be installed, updated, uninstalled, or restored on the machine; runs `homeos agents-md` and follows its stdout |
+| `homeos-inventory` skill | `skills/homeos-inventory/SKILL.md`; installed the same way | Fires at the start of shell work; reads `homeos package list --json` only — never the guide, never the update notice |
+
+Invariants:
+
+- **Skills are thin.** A `SKILL.md` carries frontmatter (`name`, `description`, `license`) and a few lines that point at a homeos command. Anything that depends on the homeos version lives in the template, never in a skill: `gh skill install` resolves the repository's latest release tag regardless of which binary the user has installed, so a fat skill would drift.
+- **The guide is working-directory independent.** It instructs the agent to resolve the data directory once via `homeos cd --print --json`, refers to files as `<data_dir>/...`, and writes every git command as `git -C <data_dir> ...`. A bare `git` command in the guide is a defect: an agent started inside an unrelated project would stage and commit that project's files. `test_render_includes_git_commit_convention` enforces this.
+- **Discovery convention.** `gh skill` finds skills at `skills/*/SKILL.md`, and the directory name must equal the frontmatter `name`. `gh skill publish --dry-run` validates both and runs in CI (`build.yml`, `skills` job).
+- **`homeos agents-md` works without a data directory.** It renders from the binary alone. An agent restoring a setup on a new machine reads the guide first and runs `homeos init <url>` from it, so nothing in `agents-md` — the update check included — may require or create the data directory.
+- **The update notice reaches agents through `homeos agents-md`**, not through the skills (see *Update check*), so `homeos-inventory` sessions never see it.
 
 ## Action resolution
 
@@ -215,12 +233,12 @@ Error messages: an input matching neither form → `URL '{url}' must be 'scheme:
 |---|---|
 | `HOMEOS_DATA_DIR` | Overrides the default data directory (used verbatim, no `homeos/` segment appended) |
 | `HOMEOS_OUTPUT_FORMAT` | `text` (default) or `json` — same effect as `--output` |
-| `HOMEOS_SKIP_UPDATE_CHECK` | Any non-empty value skips the `homeos cd` update check entirely (no cache read, no network, no file write) |
+| `HOMEOS_SKIP_UPDATE_CHECK` | Any non-empty value skips the update check (`homeos cd`, `homeos agents-md`) entirely (no cache read, no network, no file write) |
 | `HOMEOS_FORCE_INSTALL` | Any non-empty value bypasses `install.sh` / `install.ps1`'s version-check short-circuit |
 
-## Update check (`homeos cd`)
+## Update check (`homeos cd`, `homeos agents-md`)
 
-`homeos cd` performs a best-effort update check as part of its entry sequence:
+`homeos cd` performs a best-effort update check as part of its entry sequence. `homeos agents-md` performs the same check after writing the guide to stdout. Common rules:
 
 - **Cache**: `<data_dir>/.last-update-check`, JSON with `last_checked_at` (Unix epoch seconds) and `latest_tag` (e.g., `"v0.3.12"`). Seeded by `homeos init` with the current binary's tag, no network call.
 - **TTL 7 days**: a fresh cache is reused without a network call; a stale or missing cache triggers a fetch of the latest release tag from the GitHub API (1500 ms timeout). `last_checked_at` always advances after a check attempt regardless of network outcome, bounding the cost for offline machines to one timeout per window.
