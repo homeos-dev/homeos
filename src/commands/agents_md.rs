@@ -435,9 +435,20 @@ mod tests {
         // Arrange & Act
         let rendered = render();
 
-        // Assert — PRD requires documenting the git add/commit pattern after mutation
-        assert!(rendered.contains("git add -A"));
-        assert!(rendered.contains("git commit"));
+        // Assert — the add/commit pattern after mutation is documented, and
+        // every git command in the guide targets the home explicitly (an agent
+        // started inside an unrelated project must never commit that project)
+        assert!(rendered.contains("git -C <data_dir> add -A"));
+        assert!(rendered.contains("git -C <data_dir> commit"));
+        for line in rendered.lines() {
+            if line.starts_with("git ") {
+                assert!(
+                    line.starts_with("git -C <data_dir> ")
+                        || line.starts_with("git config --global "),
+                    "bare git command in the guide: {line:?}"
+                );
+            }
+        }
     }
 
     #[test]
