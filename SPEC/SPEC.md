@@ -51,28 +51,15 @@ params:
 - `description` is required (one-line summary; displayed by `plugin list`, `plugin info`, `plugin list-remote`)
 - `params` is the parameter list expected by the templates; `package add --plugin <name> --param key=value` validates that every required param is supplied and substitutes `{{ key }}` in each `*.tmpl`
 
-### .last-update-check (`<data_dir>/.last-update-check`)
-
-JSON cache for the "update available" notification triggered by `homeos cd`:
-
-```json
-{ "last_checked_at": 1748242899, "latest_tag": "v0.3.9" }
-```
-
-`last_checked_at` is Unix epoch seconds. 7-day TTL. The timestamp is always updated after a check attempt (success or network failure) so an offline machine retries at most once per week. Seeded by `homeos init` with the current binary tag so freshly initialized data directories are silent for their first week.
-
 ## Directory structure
 
 `homeos init` creates a flat layout at `<data_dir>`:
 
 ```
 <data_dir>/
-├── .gitignore             # ignores state.yml, AGENTS.md, CLAUDE.md, .last-update-check
+├── .gitignore             # ignores state.yml
 ├── homeos.yml
 ├── state.yml              # ignored
-├── AGENTS.md              # generated; auto-refreshed on homeos cd when binary tag changes (see Agent entry points)
-├── CLAUDE.md              # one-line Claude Code pointer: "@AGENTS.md"
-├── .last-update-check     # ignored
 ├── packages/
 └── plugins/
 ```
@@ -85,11 +72,10 @@ JSON cache for the "update available" notification triggered by `homeos cd`:
 
 ## Agent entry points
 
-Three entry points deliver the same operating guide to an AI agent. All of them resolve to the binary's `render()` (`templates/AGENTS.md.tmpl` plus the clap-generated command reference), so the guide always matches the installed version and there is no second copy to keep in sync.
+`homeos agents-md` renders the operating guide for AI agents from the binary (`templates/AGENTS.md.tmpl` plus the clap-generated command reference). Two skills are the entry points.
 
 | Entry | Where it lives | How the agent gets the guide |
 |---|---|---|
-| `<data_dir>/AGENTS.md` (+ `CLAUDE.md` pointer) | Data directory; written by `homeos init`, refreshed by `homeos cd` when the version marker is stale | Read automatically when the agent's working directory is the data directory. **Legacy fallback, slated for removal**: not offered to users in `README.md`; the skills are the only documented agent workflow |
 | `homeos-manage` skill | `skills/homeos-manage/SKILL.md` in this repository; installed per agent with `gh skill install hainet50b/homeos homeos-manage --scope user --agent <agent>` | Fires when software or an agent skill is about to be installed, updated, uninstalled, or restored on the machine; runs `homeos agents-md` and follows its stdout |
 | `homeos-inventory` skill | `skills/homeos-inventory/SKILL.md`; installed the same way | Fires at the start of shell work; reads `homeos package list --json` only — never the guide, never the update notice |
 
@@ -100,7 +86,6 @@ Invariants:
 - **Discovery convention.** `gh skill` finds skills at `skills/*/SKILL.md`, and the directory name must equal the frontmatter `name`. `gh skill publish --dry-run` validates both and runs in CI (`build.yml`, `skills` job).
 - **`homeos agents-md` works without a data directory.** It renders from the binary alone. An agent restoring a setup on a new machine reads the guide first and runs `homeos init <url>` from it, so nothing in `agents-md` — the update check included — may require or create the data directory.
 - **The update notice reaches agents through `homeos agents-md`**, not through the skills (see *Update check*), so `homeos-inventory` sessions never see it.
-- **`<data_dir>/AGENTS.local.md` is retained but slated for removal.** The guide still tells the agent to read it, and it is not gitignored, so it travels with the repository; `README.md` no longer documents it.
 
 ## Action resolution
 
@@ -234,19 +219,17 @@ Error messages: an input matching neither form → `URL '{url}' must be 'scheme:
 |---|---|
 | `HOMEOS_DATA_DIR` | Overrides the default data directory (used verbatim, no `homeos/` segment appended) |
 | `HOMEOS_OUTPUT_FORMAT` | `text` (default) or `json` — same effect as `--output` |
-| `HOMEOS_SKIP_UPDATE_CHECK` | Any non-empty value skips the update check (`homeos cd`, `homeos agents-md`) entirely (no cache read, no network, no file write) |
+| `HOMEOS_SKIP_UPDATE_CHECK` | Any non-empty value skips the `homeos agents-md` update check entirely (no network call) |
 | `HOMEOS_FORCE_INSTALL` | Any non-empty value bypasses `install.sh` / `install.ps1`'s version-check short-circuit |
 
-## Update check (`homeos cd`, `homeos agents-md`)
+## Update check
 
-`homeos cd` performs a best-effort update check as part of its entry sequence. `homeos agents-md` performs the same check after writing the guide to stdout. Common rules:
+`homeos agents-md` performs a best-effort update check after writing the guide to stdout:
 
-- **Cache**: `<data_dir>/.last-update-check`, JSON with `last_checked_at` (Unix epoch seconds) and `latest_tag` (e.g., `"v0.3.12"`). Seeded by `homeos init` with the current binary's tag, no network call.
-- **TTL 7 days**: a fresh cache is reused without a network call; a stale or missing cache triggers a fetch of the latest release tag from the GitHub API (1500 ms timeout). `last_checked_at` always advances after a check attempt regardless of network outcome, bounding the cost for offline machines to one timeout per window.
-- **Notify condition**: one stderr line `homeos: <latest> available — update at https://github.com/hainet50b/homeos` is emitted only when `latest_tag` is **strictly newer** than the current binary's tag, comparing `vX.Y.Z` numerically (major, minor, patch). If either tag does not parse as `vX.Y.Z`, nothing is emitted — the check is best-effort and silence beats false alarms. Equality and older-than-current (a stale cache right after a binary update) are silent.
-- **Self-healing**: when the current binary's tag is strictly newer than the cached `latest_tag`, the cache's `latest_tag` is rewritten to the current tag (preserving `last_checked_at` — no check happened). The running binary is itself proof that a release at least that new exists.
-- **Ordering**: the cd entry sequence refreshes AGENTS.md first and emits the update notice second, so the local state change (`homeos: refreshed AGENTS.md to vX.Y.Z`) precedes the outside-world advisory (`homeos: vX.Y.Z available — ...`) and the actionable line lands closest to the prompt.
-- **Opt-out**: `HOMEOS_SKIP_UPDATE_CHECK` (any non-empty value) skips cache read, network call, and file write entirely.
+- **Per invocation**: every run fetches the latest release tag from the GitHub API (1500 ms timeout).
+- **Notify condition**: one stderr line `homeos: <latest> available — update at https://github.com/hainet50b/homeos` is emitted only when the fetched tag is **strictly newer** than the current binary's tag, comparing `vX.Y.Z` numerically (major, minor, patch). A failed fetch or a tag that does not parse as `vX.Y.Z` emits nothing — the check is best-effort and silence beats false alarms. Equality and older-than-current are silent.
+- **Placement**: stdout carries only the rendered guide; the notice is the sole stderr output and comes after it.
+- **Opt-out**: `HOMEOS_SKIP_UPDATE_CHECK` (any non-empty value) skips the network call entirely.
 
 ## Git invocation conventions
 
@@ -260,4 +243,3 @@ All `git` invocations from inside homeos prefix `-c core.autocrlf=false -c core.
 - **PowerShell template authoring**: `.ps1.tmpl` files default to the PowerShell 5.1 subset (no `?.`, no ternary `? :`, no `??`, no `ForEach-Object -Parallel`) so the fallback shell can execute them. Plugins that intentionally require 7+ should call that out in their `plugin.yml` `description`.
 - **PowerShell profile isolation**: action scripts on Windows are executed with `-NoProfile -File <script>`, so script behaviour cannot depend on the user's `$PROFILE` (hidden machine-local state) and profile startup cost is not paid per script. This mirrors Unix, where non-interactive `sh` reads no profile files. `-File` is explicit because the shells disagree on the default first-argument interpretation (`pwsh` assumes `-File`, `powershell.exe` assumes `-Command`). `-NonInteractive` is NOT passed — action scripts may prompt; stdin/stdout/stderr are inherited by design. The interactive subshell launched by the cd family is the user's own session and loads the profile as normal.
 - **Windows binary linkage**: builds for the `*-pc-windows-msvc` targets statically link the MSVC C runtime (`-C target-feature=+crt-static` via `.cargo/config.toml`), so `homeos.exe` runs on a fresh Windows machine without the Visual C++ Redistributable (`vcruntime140.dll`). Linux and macOS targets are unaffected. CRT independence is enforced in CI: the Windows jobs of the Build and Release workflows inspect the built `homeos.exe` import table (`dumpbin /dependents`) and fail if any CRT DLL (`VCRUNTIME*.dll`, `MSVCP*.dll`, `api-ms-win-crt-*.dll`) appears; OS-level imports (`KERNEL32.dll` etc.) are expected and allowed.
-- **AGENTS.md / CLAUDE.md pairing**: `CLAUDE.md` is a plain one-line file containing `@AGENTS.md` — Claude Code's import syntax, which resolves the path relative to the importing file and loads the adjacent `AGENTS.md` in full. The same file is written on every platform, and because it is a pointer rather than a copy it never goes stale when `AGENTS.md` is regenerated — it only needs creating when missing. Every `homeos cd` ensures the pointer: missing → create; legacy form → replace. The legacy-replacement branch is a time-limited migration shim for pre-v0.3.15 installs, where `CLAUDE.md` was a symlink to `AGENTS.md` on Linux/macOS and a content copy on Windows; the symlink case MUST be `remove_file`d before writing, because writing through the symlink would clobber `AGENTS.md` itself. The shim is marked for removal after 2027-01.
