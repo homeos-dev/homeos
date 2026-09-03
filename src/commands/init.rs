@@ -55,8 +55,6 @@ pub fn run(
             }
         }
 
-        crate::commands::update_check::seed_cache(data_dir)?;
-
         println!(
             "Initialized homeos at {} (cloned from {})",
             data_dir.display(),
@@ -74,10 +72,8 @@ pub fn run(
 
         let gitignore_path = ctx.gitignore_path();
         if !gitignore_path.exists() {
-            fs::write(&gitignore_path, "state.yml\n.last-update-check\n")?;
+            fs::write(&gitignore_path, "state.yml\n")?;
         }
-
-        crate::commands::update_check::seed_cache(data_dir)?;
 
         git::init(data_dir)?;
 
@@ -214,7 +210,7 @@ mod tests {
     }
 
     #[test]
-    fn test_init_creates_gitignore_excluding_state_yml_and_update_check() {
+    fn test_init_creates_gitignore_excluding_state_yml() {
         // Arrange
         let (_tmp, ctx) = fixture();
 
@@ -225,7 +221,7 @@ mod tests {
         let gitignore_path = ctx.gitignore_path();
         assert!(gitignore_path.exists());
         let content = fs::read_to_string(&gitignore_path).unwrap();
-        assert_eq!(content, "state.yml\n.last-update-check\n");
+        assert_eq!(content, "state.yml\n");
     }
 
     #[test]
@@ -515,8 +511,8 @@ mod tests {
 
         // Assert — `git status` succeeds against the data dir, confirming
         // the directory is a valid working tree and the scaffolded files
-        // are visible to git (homeos.yml is tracked; state.yml and the
-        // update-check cache are excluded via .gitignore).
+        // are visible to git (homeos.yml is tracked; state.yml is excluded
+        // via .gitignore).
         let output = Command::new("git")
             .args([
                 "-C",
@@ -569,61 +565,6 @@ mod tests {
             "expected no commits, but rev-list succeeded with stdout: {}",
             String::from_utf8_lossy(&output.stdout)
         );
-    }
-
-    #[test]
-    fn test_init_scaffold_seeds_update_check_cache() {
-        // Arrange
-        let (_tmp, ctx) = fixture();
-
-        // Act
-        run(&ctx, None, false).unwrap();
-
-        // Assert — `.last-update-check` exists, parses, and carries the current
-        // binary's tag so the user is not pinged within the first 7-day window.
-        let cache_path = crate::commands::update_check::cache_path(ctx.data_dir());
-        assert!(cache_path.exists(), "expected .last-update-check to exist");
-        let cache: crate::commands::update_check::UpdateCheckCache =
-            serde_json::from_str(&fs::read_to_string(&cache_path).unwrap()).unwrap();
-        assert_eq!(
-            cache.latest_tag,
-            crate::commands::update_check::current_tag()
-        );
-        assert!(cache.last_checked_at > 0);
-    }
-
-    #[test]
-    fn test_init_with_url_seeds_update_check_cache() {
-        // Arrange
-        let (_tmp, ctx) = fixture();
-        let source_dir = TempDir::new().unwrap();
-        create_source_repo_with_config(source_dir.path());
-
-        // Act
-        run(&ctx, Some(&source_dir.path().to_string_lossy()), false).unwrap();
-
-        // Assert
-        let cache_path = crate::commands::update_check::cache_path(ctx.data_dir());
-        assert!(cache_path.exists());
-        let cache: crate::commands::update_check::UpdateCheckCache =
-            serde_json::from_str(&fs::read_to_string(&cache_path).unwrap()).unwrap();
-        assert_eq!(
-            cache.latest_tag,
-            crate::commands::update_check::current_tag()
-        );
-    }
-
-    #[test]
-    fn test_init_gitignore_excludes_last_update_check() {
-        // Arrange
-        let (_tmp, ctx) = fixture();
-
-        // Act
-        run(&ctx, None, false).unwrap();
-
-        // Assert
-        let content = fs::read_to_string(ctx.gitignore_path()).unwrap();
-        assert!(content.contains(".last-update-check"));
     }
 
     #[test]

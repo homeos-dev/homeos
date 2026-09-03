@@ -1,39 +1,30 @@
 use crate::Cli;
-use crate::context::Context;
 use clap::{Arg, Command, CommandFactory};
 use std::io::Write;
-use std::path::Path;
 
 const TEMPLATE: &str = include_str!("../../templates/AGENTS.md.tmpl");
 
-pub fn run(ctx: &Context) -> Result<(), Box<dyn std::error::Error>> {
-    run_to(
-        ctx.data_dir(),
-        &mut std::io::stdout(),
-        &mut std::io::stderr(),
-    )
+pub fn run() -> Result<(), Box<dyn std::error::Error>> {
+    run_to(&mut std::io::stdout(), &mut std::io::stderr())
 }
 
 /// Write the rendered guide to `out`, then run the best-effort update check
-/// against `data_dir` with `notice` as its writer (stderr in production).
+/// with `notice` as its writer (stderr in production).
 ///
 /// The guide is the whole of stdout — `homeos agents-md > AGENTS.md` must keep
 /// producing a byte-identical file — so the notice goes to `notice` only, after
-/// the guide is flushed. When the data directory does not exist the check is
-/// skipped entirely: `agents-md` is the entry point an agent reads *before*
-/// `homeos init`, so it must neither require nor create the data directory. A
-/// failing check never fails the command.
+/// the guide is flushed. The check is stateless and touches no data directory:
+/// `agents-md` is the entry point an agent reads *before* `homeos init`, so it
+/// must neither require nor create one. A failing check never fails the
+/// command.
 fn run_to<O: Write, N: Write>(
-    data_dir: &Path,
     out: &mut O,
     notice: &mut N,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let rendered = render();
     out.write_all(rendered.as_bytes())?;
     out.flush()?;
-    if data_dir.exists() {
-        let _ = crate::commands::update_check::check_and_notify_to_writer(data_dir, notice);
-    }
+    let _ = crate::commands::update_check::check_and_notify_to_writer(notice);
     Ok(())
 }
 
@@ -111,24 +102,8 @@ fn format_arg_entry(arg: &Arg) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commands::update_check::{UpdateCheckCache, cache_path};
     use crate::env_test::EnvVarGuard;
     use std::collections::BTreeSet;
-    use std::fs;
-
-    /// Write a cache file at `data_dir` that is within the TTL (so no network
-    /// call happens) and holds `tag` as the latest release.
-    fn write_fresh_cache(data_dir: &Path, tag: &str) {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-        let cache = UpdateCheckCache {
-            last_checked_at: now,
-            latest_tag: tag.to_string(),
-        };
-        fs::write(cache_path(data_dir), serde_json::to_string(&cache).unwrap()).unwrap();
-    }
 
     #[test]
     fn test_render_substitutes_commands_reference_placeholder() {
@@ -177,12 +152,13 @@ mod tests {
 
     #[test]
     fn test_run_to_writes_rendered_template() {
-        // Arrange
-        let tmp = tempfile::TempDir::new().unwrap();
+        // Arrange — skip the update check so only the guide is exercised
+        let guard = EnvVarGuard::capture("HOMEOS_SKIP_UPDATE_CHECK");
+        guard.set("1");
         let mut out: Vec<u8> = Vec::new();
 
         // Act
-        run_to(&tmp.path().join("absent"), &mut out, &mut std::io::sink()).unwrap();
+        run_to(&mut out, &mut std::io::sink()).unwrap();
 
         // Assert
         let output = String::from_utf8(out).unwrap();
@@ -191,65 +167,20 @@ mod tests {
     }
 
     #[test]
-    fn test_run_to_emits_update_notice_when_cache_holds_newer_tag() {
-        // Arrange — an existing data dir with a fresh cache holding a strictly
-        // newer tag (fresh cache => no network call), and the skip env var cleared
+    fn test_run_to_keeps_stdout_to_the_guide_alone() {
+        // Arrange — no data directory is in play at all; the check is skipped
+        // so the notice writer stays deterministic
         let guard = EnvVarGuard::capture("HOMEOS_SKIP_UPDATE_CHECK");
-        guard.unset();
-        let tmp = tempfile::TempDir::new().unwrap();
-        write_fresh_cache(tmp.path(), "v99.0.0");
+        guard.set("1");
         let mut out: Vec<u8> = Vec::new();
         let mut notice: Vec<u8> = Vec::new();
 
         // Act
-        run_to(tmp.path(), &mut out, &mut notice).unwrap();
+        run_to(&mut out, &mut notice).unwrap();
 
-        // Assert — the notice lands on the notice writer, stdout is the guide alone
-        let notice_text = String::from_utf8(notice).unwrap();
-        assert!(
-            notice_text.contains("v99.0.0 available"),
-            "expected an update notice, got: {notice_text:?}"
-        );
+        // Assert — stdout is byte-identical to the rendered guide
         assert_eq!(String::from_utf8(out).unwrap(), render());
-    }
-
-    #[test]
-    fn test_run_to_is_silent_when_cache_holds_equal_tag() {
-        // Arrange — fresh cache holding exactly the running binary's tag
-        let guard = EnvVarGuard::capture("HOMEOS_SKIP_UPDATE_CHECK");
-        guard.unset();
-        let tmp = tempfile::TempDir::new().unwrap();
-        write_fresh_cache(tmp.path(), &crate::commands::update_check::current_tag());
-        let mut out: Vec<u8> = Vec::new();
-        let mut notice: Vec<u8> = Vec::new();
-
-        // Act
-        run_to(tmp.path(), &mut out, &mut notice).unwrap();
-
-        // Assert
-        assert!(notice.is_empty(), "an equal tag must not notify");
-        assert_eq!(String::from_utf8(out).unwrap(), render());
-    }
-
-    #[test]
-    fn test_run_to_skips_check_and_writes_nothing_when_data_dir_absent() {
-        // Arrange — a path that does not exist; agents-md must work before
-        // `homeos init` and must never create the data directory
-        let guard = EnvVarGuard::capture("HOMEOS_SKIP_UPDATE_CHECK");
-        guard.unset();
-        let tmp = tempfile::TempDir::new().unwrap();
-        let absent = tmp.path().join("not-initialized");
-        let mut out: Vec<u8> = Vec::new();
-        let mut notice: Vec<u8> = Vec::new();
-
-        // Act
-        run_to(&absent, &mut out, &mut notice).unwrap();
-
-        // Assert — nothing on the notice writer, no data dir, no cache file
         assert!(notice.is_empty());
-        assert!(!absent.exists(), "agents-md must not create the data dir");
-        assert!(!crate::commands::update_check::cache_path(&absent).exists());
-        assert_eq!(String::from_utf8(out).unwrap(), render());
     }
 
     #[test]

@@ -1,64 +1,30 @@
-use serde::{Deserialize, Serialize};
-use std::fs;
 use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
-const CACHE_FILENAME: &str = ".last-update-check";
-const CACHE_TTL_SECONDS: u64 = 7 * 24 * 60 * 60;
 const FETCH_TIMEOUT_MS: u64 = 1500;
 const RELEASES_URL: &str = "https://api.github.com/repos/hainet50b/homeos/releases/latest";
 const UPDATE_URL: &str = "https://github.com/hainet50b/homeos";
 const SKIP_ENV_VAR: &str = "HOMEOS_SKIP_UPDATE_CHECK";
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct UpdateCheckCache {
-    pub last_checked_at: u64,
-    pub latest_tag: String,
-}
-
-pub fn cache_path(data_dir: &Path) -> PathBuf {
-    data_dir.join(CACHE_FILENAME)
-}
-
-pub fn current_tag() -> String {
+fn current_tag() -> String {
     format!("v{}", env!("CARGO_PKG_VERSION"))
 }
 
-fn now_seconds() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0)
-}
-
-/// Seed the cache with the current binary's tag and a now timestamp without
-/// making any network call. Called by `homeos init` so a freshly initialized
-/// data directory has a primed cache and the user is not pinged within their
-/// first 7-day window.
-pub fn seed_cache(data_dir: &Path) -> std::io::Result<()> {
-    let cache = UpdateCheckCache {
-        last_checked_at: now_seconds(),
-        latest_tag: current_tag(),
-    };
-    write_cache(&cache_path(data_dir), &cache)
-}
-
-/// Best-effort update check. Reads the cache, fetches when stale or missing,
-/// writes back the result, and emits one line to `writer` (stderr in
-/// production) when a newer release is available. Honors
-/// `HOMEOS_SKIP_UPDATE_CHECK` (any non-empty value disables both the cache read
-/// and the network call, with no file write either). Uses the real network
-/// fetch and clock; the injectable `writer` lets callers (the `homeos cd` entry
-/// sequence) capture the notice for ordering tests without spawning a shell.
+/// Best-effort, stateless update check. Asks the GitHub releases API for the
+/// latest tag on every call and emits one line to `writer` (stderr in
+/// production) when that tag is strictly newer than the running binary. No
+/// cache is read or written, so the check needs no data directory and behaves
+/// the same before and after `homeos init`. Honors `HOMEOS_SKIP_UPDATE_CHECK`
+/// (any non-empty value skips the network call entirely). Any failure —
+/// timeout, DNS, unparseable tag — is silent; the injectable `writer` lets the
+/// `homeos agents-md` caller keep the notice off stdout.
 pub(crate) fn check_and_notify_to_writer<W: Write>(
-    data_dir: &Path,
     writer: &mut W,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if skip_check() {
         return Ok(());
     }
-    check_and_notify_to(data_dir, writer, default_fetch, now_seconds())
+    check_and_notify_to(writer, default_fetch)
 }
 
 fn skip_check() -> bool {
@@ -81,76 +47,14 @@ fn default_fetch() -> Option<String> {
     response.get("tag_name")?.as_str().map(|s| s.to_string())
 }
 
-fn read_cache(path: &Path) -> Option<UpdateCheckCache> {
-    let content = fs::read_to_string(path).ok()?;
-    serde_json::from_str(&content).ok()
-}
-
-fn write_cache(path: &Path, cache: &UpdateCheckCache) -> std::io::Result<()> {
-    let json = serde_json::to_string(cache).map_err(std::io::Error::other)?;
-    fs::write(path, json)
-}
-
-fn check_and_notify_to<W, F>(
-    data_dir: &Path,
-    writer: &mut W,
-    fetch: F,
-    now: u64,
-) -> Result<(), Box<dyn std::error::Error>>
+fn check_and_notify_to<W, F>(writer: &mut W, fetch: F) -> Result<(), Box<dyn std::error::Error>>
 where
     W: Write,
     F: FnOnce() -> Option<String>,
 {
-    let path = cache_path(data_dir);
-    let previous = read_cache(&path);
-
-    let latest_tag = match previous {
-        Some(c) if now.saturating_sub(c.last_checked_at) < CACHE_TTL_SECONDS => {
-            // Fresh — reuse without a network call. Self-heal when the running
-            // binary is strictly newer than the cached tag: the binary is itself
-            // proof a release at least that new exists, so rewrite latest_tag to
-            // the current tag, preserving last_checked_at (no check happened, so
-            // the TTL schedule must not shift).
-            let current = current_tag();
-            if is_update_available(&current, &c.latest_tag) {
-                let _ = write_cache(
-                    &path,
-                    &UpdateCheckCache {
-                        last_checked_at: c.last_checked_at,
-                        latest_tag: current.clone(),
-                    },
-                );
-                current
-            } else {
-                c.latest_tag
-            }
-        }
-        Some(c) => {
-            // Stale — fetch and rewrite. Preserve previous tag on fetch failure.
-            let fetched = fetch().unwrap_or(c.latest_tag);
-            let _ = write_cache(
-                &path,
-                &UpdateCheckCache {
-                    last_checked_at: now,
-                    latest_tag: fetched.clone(),
-                },
-            );
-            fetched
-        }
-        None => {
-            // Missing or unparseable — fetch and write. Seed with current tag on failure.
-            let fetched = fetch().unwrap_or_else(current_tag);
-            let _ = write_cache(
-                &path,
-                &UpdateCheckCache {
-                    last_checked_at: now,
-                    latest_tag: fetched.clone(),
-                },
-            );
-            fetched
-        }
+    let Some(latest_tag) = fetch() else {
+        return Ok(());
     };
-
     if is_update_available(&latest_tag, &current_tag()) {
         writeln!(
             writer,
@@ -189,222 +93,43 @@ fn is_update_available(latest: &str, current: &str) -> bool {
 mod tests {
     use super::*;
     use crate::env_test::EnvVarGuard;
-    use tempfile::TempDir;
-
-    fn fresh_timestamp(now: u64) -> u64 {
-        now - 60
-    }
-
-    fn stale_timestamp(now: u64) -> u64 {
-        now - CACHE_TTL_SECONDS - 1
-    }
 
     #[test]
-    fn test_seed_cache_writes_current_tag() {
+    fn test_skip_env_var_skips_the_network_call() {
         // Arrange
-        let tmp = TempDir::new().unwrap();
-
-        // Act
-        seed_cache(tmp.path()).unwrap();
-
-        // Assert
-        let cache = read_cache(&cache_path(tmp.path())).expect("cache should be readable");
-        assert_eq!(cache.latest_tag, current_tag());
-        assert!(cache.last_checked_at > 0);
-    }
-
-    #[test]
-    fn test_cache_hit_still_fresh_makes_no_network_call() {
-        // Arrange — write a fresh cache and assert the fetch closure is never invoked.
-        let tmp = TempDir::new().unwrap();
-        let now = 1_700_000_000u64;
-        write_cache(
-            &cache_path(tmp.path()),
-            &UpdateCheckCache {
-                last_checked_at: fresh_timestamp(now),
-                latest_tag: current_tag(),
-            },
-        )
-        .unwrap();
-        let mut writer: Vec<u8> = Vec::new();
-        let fetch = || -> Option<String> {
-            panic!("fetch must not be called on a fresh cache hit");
-        };
-
-        // Act
-        check_and_notify_to(tmp.path(), &mut writer, fetch, now).unwrap();
-
-        // Assert — no stderr notice, and the cache timestamp is unchanged (no rewrite).
-        assert!(writer.is_empty(), "stderr should be silent on cache hit");
-        let cache = read_cache(&cache_path(tmp.path())).unwrap();
-        assert_eq!(cache.last_checked_at, fresh_timestamp(now));
-    }
-
-    #[test]
-    fn test_cache_miss_fetch_success_writes_fetched_tag() {
-        // Arrange
-        let tmp = TempDir::new().unwrap();
-        let now = 1_700_000_000u64;
-        let mut writer: Vec<u8> = Vec::new();
-        let fetch = || Some("v99.0.0".to_string());
-
-        // Act
-        check_and_notify_to(tmp.path(), &mut writer, fetch, now).unwrap();
-
-        // Assert
-        let cache = read_cache(&cache_path(tmp.path())).unwrap();
-        assert_eq!(cache.latest_tag, "v99.0.0");
-        assert_eq!(cache.last_checked_at, now);
-        let notice = String::from_utf8(writer).unwrap();
-        assert!(
-            notice.contains("v99.0.0 available"),
-            "notice should mention the newer tag, got: {notice:?}"
-        );
-    }
-
-    #[test]
-    fn test_cache_stale_fetch_success_rewrites_with_fetched_tag() {
-        // Arrange
-        let tmp = TempDir::new().unwrap();
-        let now = 1_700_000_000u64;
-        write_cache(
-            &cache_path(tmp.path()),
-            &UpdateCheckCache {
-                last_checked_at: stale_timestamp(now),
-                latest_tag: current_tag(),
-            },
-        )
-        .unwrap();
-        let mut writer: Vec<u8> = Vec::new();
-        let fetch = || Some("v99.0.0".to_string());
-
-        // Act
-        check_and_notify_to(tmp.path(), &mut writer, fetch, now).unwrap();
-
-        // Assert
-        let cache = read_cache(&cache_path(tmp.path())).unwrap();
-        assert_eq!(cache.latest_tag, "v99.0.0");
-        assert_eq!(cache.last_checked_at, now);
-    }
-
-    #[test]
-    fn test_cache_miss_fetch_timeout_writes_current_tag_with_now_timestamp() {
-        // Arrange
-        let tmp = TempDir::new().unwrap();
-        let now = 1_700_000_000u64;
-        let mut writer: Vec<u8> = Vec::new();
-        let fetch = || None; // Simulates timeout / parse / DNS failure.
-
-        // Act
-        check_and_notify_to(tmp.path(), &mut writer, fetch, now).unwrap();
-
-        // Assert
-        let cache = read_cache(&cache_path(tmp.path())).unwrap();
-        assert_eq!(cache.latest_tag, current_tag());
-        assert_eq!(cache.last_checked_at, now);
-        assert!(
-            writer.is_empty(),
-            "no notice when fallback equals current tag"
-        );
-    }
-
-    #[test]
-    fn test_cache_stale_fetch_timeout_preserves_previous_tag_with_now_timestamp() {
-        // Arrange — stale cache holds a known newer tag; fetch fails.
-        let tmp = TempDir::new().unwrap();
-        let now = 1_700_000_000u64;
-        write_cache(
-            &cache_path(tmp.path()),
-            &UpdateCheckCache {
-                last_checked_at: stale_timestamp(now),
-                latest_tag: "v99.0.0".to_string(),
-            },
-        )
-        .unwrap();
-        let mut writer: Vec<u8> = Vec::new();
-        let fetch = || None;
-
-        // Act
-        check_and_notify_to(tmp.path(), &mut writer, fetch, now).unwrap();
-
-        // Assert
-        let cache = read_cache(&cache_path(tmp.path())).unwrap();
-        assert_eq!(cache.latest_tag, "v99.0.0");
-        assert_eq!(cache.last_checked_at, now);
-        let notice = String::from_utf8(writer).unwrap();
-        assert!(notice.contains("v99.0.0"));
-    }
-
-    #[test]
-    fn test_corrupt_json_is_treated_as_cache_miss() {
-        // Arrange — pre-existing file with garbage content.
-        let tmp = TempDir::new().unwrap();
-        fs::write(cache_path(tmp.path()), "not json at all").unwrap();
-        let now = 1_700_000_000u64;
-        let mut writer: Vec<u8> = Vec::new();
-        let fetch = || Some("v99.0.0".to_string());
-
-        // Act
-        check_and_notify_to(tmp.path(), &mut writer, fetch, now).unwrap();
-
-        // Assert — the corrupt file is overwritten with a valid cache.
-        let cache = read_cache(&cache_path(tmp.path())).unwrap();
-        assert_eq!(cache.latest_tag, "v99.0.0");
-        assert_eq!(cache.last_checked_at, now);
-    }
-
-    #[test]
-    fn test_skip_env_var_disables_both_cache_read_and_file_write() {
-        // Arrange
-        let tmp = TempDir::new().unwrap();
         let guard = EnvVarGuard::capture(SKIP_ENV_VAR);
         guard.set("1");
+        let mut writer: Vec<u8> = Vec::new();
 
         // Act
-        check_and_notify_to_writer(tmp.path(), &mut std::io::sink()).unwrap();
+        check_and_notify_to_writer(&mut writer).unwrap();
 
-        // Assert — no cache file was created and no notice was emitted.
-        assert!(!cache_path(tmp.path()).exists());
+        // Assert — nothing fetched, nothing emitted
+        assert!(skip_check());
+        assert!(writer.is_empty());
     }
 
     #[test]
-    fn test_current_tag_no_warning_emitted() {
-        // Arrange — cached tag equals current binary's tag.
-        let tmp = TempDir::new().unwrap();
-        let now = 1_700_000_000u64;
-        write_cache(
-            &cache_path(tmp.path()),
-            &UpdateCheckCache {
-                last_checked_at: fresh_timestamp(now),
-                latest_tag: current_tag(),
-            },
-        )
-        .unwrap();
-        let mut writer: Vec<u8> = Vec::new();
-        let fetch = || -> Option<String> {
-            panic!("fetch must not be called on a fresh cache hit");
-        };
+    fn test_empty_skip_env_var_does_not_skip_the_check() {
+        // Arrange
+        let guard = EnvVarGuard::capture(SKIP_ENV_VAR);
+        guard.set("");
 
         // Act
-        check_and_notify_to(tmp.path(), &mut writer, fetch, now).unwrap();
+        let skipped = skip_check();
 
         // Assert
-        assert!(
-            writer.is_empty(),
-            "no stderr notice when current tag matches latest"
-        );
+        assert!(!skipped);
     }
 
     #[test]
     fn test_notice_format_matches_spec() {
         // Arrange
-        let tmp = TempDir::new().unwrap();
-        let now = 1_700_000_000u64;
         let mut writer: Vec<u8> = Vec::new();
         let fetch = || Some("v99.0.0".to_string());
 
         // Act
-        check_and_notify_to(tmp.path(), &mut writer, fetch, now).unwrap();
+        check_and_notify_to(&mut writer, fetch).unwrap();
 
         // Assert — single line `homeos: v<latest> available — update at <url>`.
         let notice = String::from_utf8(writer).unwrap();
@@ -417,8 +142,6 @@ mod tests {
     #[test]
     fn test_latest_newer_notifies() {
         // Arrange — fetched tag is one patch ahead of the current binary.
-        let tmp = TempDir::new().unwrap();
-        let now = 1_700_000_000u64;
         let mut writer: Vec<u8> = Vec::new();
         let current = current_tag();
         let (major, minor, patch) = parse_tag(&current).unwrap();
@@ -427,7 +150,7 @@ mod tests {
         let fetch = move || Some(newer_for_fetch.clone());
 
         // Act
-        check_and_notify_to(tmp.path(), &mut writer, fetch, now).unwrap();
+        check_and_notify_to(&mut writer, fetch).unwrap();
 
         // Assert
         let notice = String::from_utf8(writer).unwrap();
@@ -439,24 +162,12 @@ mod tests {
 
     #[test]
     fn test_equal_tag_is_silent() {
-        // Arrange — fresh cache holds exactly the current binary's tag.
-        let tmp = TempDir::new().unwrap();
-        let now = 1_700_000_000u64;
-        write_cache(
-            &cache_path(tmp.path()),
-            &UpdateCheckCache {
-                last_checked_at: fresh_timestamp(now),
-                latest_tag: current_tag(),
-            },
-        )
-        .unwrap();
+        // Arrange — the release API reports exactly the running binary's tag.
         let mut writer: Vec<u8> = Vec::new();
-        let fetch = || -> Option<String> {
-            panic!("fetch must not be called on a fresh cache hit");
-        };
+        let fetch = || Some(current_tag());
 
         // Act
-        check_and_notify_to(tmp.path(), &mut writer, fetch, now).unwrap();
+        check_and_notify_to(&mut writer, fetch).unwrap();
 
         // Assert
         assert!(writer.is_empty(), "equal tag must not notify");
@@ -464,141 +175,41 @@ mod tests {
 
     #[test]
     fn test_latest_older_than_current_is_silent() {
-        // Arrange — fresh cache holds a tag OLDER than the current binary, the
-        // post-upgrade stale-cache case. No fetch happens on a fresh cache.
-        let tmp = TempDir::new().unwrap();
-        let now = 1_700_000_000u64;
-        write_cache(
-            &cache_path(tmp.path()),
-            &UpdateCheckCache {
-                last_checked_at: fresh_timestamp(now),
-                latest_tag: "v0.0.1".to_string(),
-            },
-        )
-        .unwrap();
+        // Arrange — the reported tag is older than the running binary.
         let mut writer: Vec<u8> = Vec::new();
-        let fetch = || -> Option<String> {
-            panic!("fetch must not be called on a fresh cache hit");
-        };
+        let fetch = || Some("v0.0.1".to_string());
 
         // Act
-        check_and_notify_to(tmp.path(), &mut writer, fetch, now).unwrap();
+        check_and_notify_to(&mut writer, fetch).unwrap();
 
         // Assert
-        assert!(writer.is_empty(), "an older cached tag must not notify");
-    }
-
-    #[test]
-    fn test_fresh_cache_with_older_tag_self_heals_to_current() {
-        // Arrange — fresh cache holds a tag OLDER than the running binary, the
-        // post-upgrade case. No fetch happens on a fresh cache.
-        let tmp = TempDir::new().unwrap();
-        let now = 1_700_000_000u64;
-        let written_at = fresh_timestamp(now);
-        write_cache(
-            &cache_path(tmp.path()),
-            &UpdateCheckCache {
-                last_checked_at: written_at,
-                latest_tag: "v0.0.1".to_string(),
-            },
-        )
-        .unwrap();
-        let mut writer: Vec<u8> = Vec::new();
-        let fetch = || -> Option<String> {
-            panic!("fetch must not be called on a fresh cache hit");
-        };
-
-        // Act
-        check_and_notify_to(tmp.path(), &mut writer, fetch, now).unwrap();
-
-        // Assert — cache rewritten to the current tag, timestamp preserved, silent.
-        let cache = read_cache(&cache_path(tmp.path())).unwrap();
-        assert_eq!(cache.latest_tag, current_tag());
-        assert_eq!(cache.last_checked_at, written_at);
-        assert!(writer.is_empty(), "self-heal must not notify");
-    }
-
-    #[test]
-    fn test_self_heal_is_idempotent_on_subsequent_run() {
-        // Arrange — fresh cache with an older tag; the first run heals it.
-        let tmp = TempDir::new().unwrap();
-        let now = 1_700_000_000u64;
-        let written_at = fresh_timestamp(now);
-        write_cache(
-            &cache_path(tmp.path()),
-            &UpdateCheckCache {
-                last_checked_at: written_at,
-                latest_tag: "v0.0.1".to_string(),
-            },
-        )
-        .unwrap();
-        let fetch1 = || -> Option<String> {
-            panic!("fetch must not be called on a fresh cache hit");
-        };
-        let fetch2 = || -> Option<String> {
-            panic!("fetch must not be called on a fresh cache hit");
-        };
-
-        // Act — first run heals; capture the healed bytes, then run again.
-        let mut writer1: Vec<u8> = Vec::new();
-        check_and_notify_to(tmp.path(), &mut writer1, fetch1, now).unwrap();
-        let healed_bytes = fs::read_to_string(cache_path(tmp.path())).unwrap();
-        let mut writer2: Vec<u8> = Vec::new();
-        check_and_notify_to(tmp.path(), &mut writer2, fetch2, now).unwrap();
-
-        // Assert — the second run rewrites nothing and stays silent.
-        let after_bytes = fs::read_to_string(cache_path(tmp.path())).unwrap();
-        assert_eq!(after_bytes, healed_bytes, "second run must not rewrite");
-        assert!(writer2.is_empty(), "second run must be silent");
-        let cache = read_cache(&cache_path(tmp.path())).unwrap();
-        assert_eq!(cache.latest_tag, current_tag());
-        assert_eq!(cache.last_checked_at, written_at);
-    }
-
-    #[test]
-    fn test_fresh_cache_with_equal_tag_does_not_rewrite() {
-        // Arrange — fresh cache already holds the current tag, serialized in a
-        // non-canonical (pretty) form so any rewrite is byte-detectable.
-        let tmp = TempDir::new().unwrap();
-        let now = 1_700_000_000u64;
-        let pretty = serde_json::to_string_pretty(&UpdateCheckCache {
-            last_checked_at: fresh_timestamp(now),
-            latest_tag: current_tag(),
-        })
-        .unwrap();
-        fs::write(cache_path(tmp.path()), &pretty).unwrap();
-        let mut writer: Vec<u8> = Vec::new();
-        let fetch = || -> Option<String> {
-            panic!("fetch must not be called on a fresh cache hit");
-        };
-
-        // Act
-        check_and_notify_to(tmp.path(), &mut writer, fetch, now).unwrap();
-
-        // Assert — bytes untouched (no rewrite), and nothing is emitted.
-        let raw = fs::read_to_string(cache_path(tmp.path())).unwrap();
-        assert_eq!(
-            raw, pretty,
-            "equal-tag fresh hit must not rewrite the cache"
-        );
-        assert!(writer.is_empty());
+        assert!(writer.is_empty(), "an older tag must not notify");
     }
 
     #[test]
     fn test_unparseable_fetched_tag_is_silent() {
         // Arrange — fetch returns a tag that is not in vX.Y.Z form.
-        let tmp = TempDir::new().unwrap();
-        let now = 1_700_000_000u64;
         let mut writer: Vec<u8> = Vec::new();
         let fetch = || Some("nightly".to_string());
 
         // Act
-        check_and_notify_to(tmp.path(), &mut writer, fetch, now).unwrap();
+        check_and_notify_to(&mut writer, fetch).unwrap();
 
-        // Assert — cache is still written, but no notice is emitted.
-        let cache = read_cache(&cache_path(tmp.path())).unwrap();
-        assert_eq!(cache.latest_tag, "nightly");
+        // Assert
         assert!(writer.is_empty(), "an unparseable tag must not notify");
+    }
+
+    #[test]
+    fn test_fetch_failure_is_silent() {
+        // Arrange — timeout / DNS / parse failure.
+        let mut writer: Vec<u8> = Vec::new();
+        let fetch = || None;
+
+        // Act
+        check_and_notify_to(&mut writer, fetch).unwrap();
+
+        // Assert
+        assert!(writer.is_empty(), "a failed fetch must not notify");
     }
 
     #[test]
