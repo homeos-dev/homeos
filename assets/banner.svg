@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" width="1200" height="300" role="img" aria-label="homeos">
+  <!-- README header, 1200x300. Ground #EEF1EC, mark #1F4D3F, wordmark #17221D.
+       Wordmark is Nunito Medium; keep a rounded sans fallback. banner.png
+       beside this file should be rendered with Nunito loaded; a converter
+       without it will not match.
+
+       No tagline on purpose: what homeos is belongs in the README and in the
+       repository description, where it costs one line to change. -->
+  <rect width="1200" height="300" fill="#EEF1EC"/>
+  <g transform="translate(217 52.5) scale(3.05)">
+    <path d="M13 35L32 16L51 35" fill="none" stroke="#1F4D3F" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M18 49H46" fill="none" stroke="#1F4D3F" stroke-width="7" stroke-linecap="round"/>
+  </g>
+  <text x="467" y="199" fill="#17221D" font-family="Nunito, Avenir Next, Segoe UI, Helvetica Neue, Arial, sans-serif" font-weight="500" font-size="136" letter-spacing="1">homeos</text>
+</svg>

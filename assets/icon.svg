@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512" role="img" aria-label="homeos">
+  <!-- homeos mark. A roof over a level line: home, and the steady state kept
+       under it. Ground #EEF1EC, mark #1F4D3F. Square and full bleed: platforms
+       round the corners themselves. -->
+  <rect width="64" height="64" fill="#EEF1EC"/>
+  <g>
+    <path d="M13 35L32 16L51 35" fill="none" stroke="#1F4D3F" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M18 49H46" fill="none" stroke="#1F4D3F" stroke-width="7" stroke-linecap="round"/>
+  </g>
+</svg>

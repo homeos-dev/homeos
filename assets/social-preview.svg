@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640" role="img" aria-label="homeos">
+  <!-- GitHub social preview, 1280x640. GitHub takes PNG, not SVG, so
+       social-preview.png beside this file is what gets uploaded; render it
+       from here with Nunito loaded. Nothing here but the name, so nothing
+       here goes stale. -->
+  <rect width="1280" height="640" fill="#EEF1EC"/>
+  <g transform="translate(544 128) scale(3)">
+    <path d="M13 35L32 16L51 35" fill="none" stroke="#1F4D3F" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M18 49H46" fill="none" stroke="#1F4D3F" stroke-width="7" stroke-linecap="round"/>
+  </g>
+  <text x="640" y="486" text-anchor="middle" fill="#17221D" font-family="Nunito, Avenir Next, Segoe UI, Helvetica Neue, Arial, sans-serif" font-weight="500" font-size="136" letter-spacing="1">homeos</text>
+</svg>

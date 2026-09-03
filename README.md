@@ -1,12 +1,12 @@
-# homeos
+![homeos](assets/banner.png)
 
 ![Build](https://github.com/hainet50b/homeos/actions/workflows/build.yml/badge.svg)
 ![Release](https://img.shields.io/github/v/release/hainet50b/homeos)
 ![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)
 
-**Making install script hell feel like *home*.**
+**Making install script hell feel like *home*, with your AI agent.**
 
-*homeos* (ho-mee-os) — named after *homeostasis*, a layer above your install scripts, managed from a single Git repository.
+*homeos* (ho-mee-os) — named after *homeostasis*: a layer above your install scripts for applications and Agent Skills, held in a single Git repository and kept steady by your AI agent.
 
 > [!IMPORTANT]
 > **Built for AI agents** *(since v0.3.0)*. *homeos* ships its own [Agent Skill](https://agentskills.io). It guides your AI agent to manage applications and Agent Skills on your instruction, and takes care of the documentation and Git operations along the way. See [Using with AI agents](#using-with-ai-agents).
