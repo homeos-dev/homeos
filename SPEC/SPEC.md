@@ -72,11 +72,11 @@ params:
 
 ## Agent entry points
 
-`homeos agents-md` renders the operating guide for AI agents from the binary (`templates/AGENTS.md.tmpl` plus the clap-generated command reference). Two skills are the entry points.
+`homeos guide` renders the operating guide for AI agents from the binary (`templates/guide.md.tmpl` plus the clap-generated command reference). Two skills are the entry points.
 
 | Entry | Where it lives | How the agent gets the guide |
 |---|---|---|
-| `homeos-manage` skill | `skills/homeos-manage/SKILL.md` in this repository; installed per agent with `gh skill install hainet50b/homeos homeos-manage --scope user --agent <agent>` | Fires when software or an agent skill is about to be installed, updated, uninstalled, or restored on the machine; runs `homeos agents-md` and follows its stdout |
+| `homeos-manage` skill | `skills/homeos-manage/SKILL.md` in this repository; installed per agent with `gh skill install hainet50b/homeos homeos-manage --scope user --agent <agent>` | Fires when software or an agent skill is about to be installed, updated, uninstalled, or restored on the machine; runs `homeos guide` and follows its stdout |
 | `homeos-inventory` skill | `skills/homeos-inventory/SKILL.md`; installed the same way | Fires at the start of shell work; reads `homeos package list --json` only — never the guide, never the update notice |
 
 Invariants:
@@ -84,8 +84,8 @@ Invariants:
 - **Skills are thin.** A `SKILL.md` carries frontmatter (`name`, `description`, `license`) and a few lines that point at a homeos command. Anything that depends on the homeos version lives in the template, never in a skill: `gh skill install` resolves the repository's latest release tag regardless of which binary the user has installed, so a fat skill would drift.
 - **The guide is working-directory independent.** It instructs the agent to resolve the data directory once via `homeos cd --print --json`, refers to files as `<data_dir>/...`, and writes every git command as `git -C <data_dir> ...`. A bare `git` command in the guide is a defect: an agent started inside an unrelated project would stage and commit that project's files. `test_render_includes_git_commit_convention` enforces this.
 - **Discovery convention.** `gh skill` finds skills at `skills/*/SKILL.md`, and the directory name must equal the frontmatter `name`. `gh skill publish --dry-run` validates both and runs in CI (`build.yml`, `skills` job).
-- **`homeos agents-md` works without a data directory.** It renders from the binary alone. An agent restoring a setup on a new machine reads the guide first and runs `homeos init <url>` from it, so nothing in `agents-md` — the update check included — may require or create the data directory.
-- **The update notice reaches agents through `homeos agents-md`**, not through the skills (see *Update check*), so `homeos-inventory` sessions never see it.
+- **`homeos guide` works without a data directory.** It renders from the binary alone. An agent restoring a setup on a new machine reads the guide first and runs `homeos init <url>` from it, so nothing in `homeos guide` — the update check included — may require or create the data directory.
+- **The update notice reaches agents through `homeos guide`**, not through the skills (see *Update check*), so `homeos-inventory` sessions never see it.
 
 ## Action resolution
 
@@ -219,12 +219,12 @@ Error messages: an input matching neither form → `URL '{url}' must be 'scheme:
 |---|---|
 | `HOMEOS_DATA_DIR` | Overrides the default data directory (used verbatim, no `homeos/` segment appended) |
 | `HOMEOS_OUTPUT_FORMAT` | `text` (default) or `json` — same effect as `--output` |
-| `HOMEOS_SKIP_UPDATE_CHECK` | Any non-empty value skips the `homeos agents-md` update check entirely (no network call) |
+| `HOMEOS_SKIP_UPDATE_CHECK` | Any non-empty value skips the `homeos guide` update check entirely (no network call) |
 | `HOMEOS_FORCE_INSTALL` | Any non-empty value bypasses `install.sh` / `install.ps1`'s version-check short-circuit |
 
 ## Update check
 
-`homeos agents-md` performs a best-effort update check after writing the guide to stdout:
+`homeos guide` performs a best-effort update check after writing the guide to stdout:
 
 - **Per invocation**: every run fetches the latest release tag from the GitHub API (1500 ms timeout).
 - **Notify condition**: one stderr line `homeos: <latest> available — update at https://github.com/hainet50b/homeos` is emitted only when the fetched tag is **strictly newer** than the current binary's tag, comparing `vX.Y.Z` numerically (major, minor, patch). A failed fetch or a tag that does not parse as `vX.Y.Z` emits nothing — the check is best-effort and silence beats false alarms. Equality and older-than-current are silent.
