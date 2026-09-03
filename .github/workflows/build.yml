@@ -55,3 +55,14 @@ jobs:
             exit 1
           }
           Write-Host "OK: no CRT dependency in $exe import table"
+
+  skills:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Validate agent skills
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh skill publish --dry-run
