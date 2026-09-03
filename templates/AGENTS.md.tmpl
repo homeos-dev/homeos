@@ -230,6 +230,27 @@ continuing. If they say yes, update it per that README, then run
 `homeos agents-md` again — this guide changes with the binary. If they
 decline, continue and do not raise it again in this session.
 
+homeos ships its own agent skills, `homeos-manage` and `homeos-inventory`,
+which the user installs by hand or with `gh skill install` (see the README).
+When they ask to bring those skills under homeos management, model each as
+a package backed by the `gh-skill` plugin, which wraps `gh skill install`
+and therefore needs `gh` on the machine — offer to install `gh` through
+homeos first if it is missing. Ask which `--agent` value they installed
+with (`universal` unless they say otherwise), then:
+
+```sh
+homeos --yes --json plugin add gh-skill                      # skip if already present
+homeos --json package add homeos-manage --plugin gh-skill --param repo=hainet50b/homeos --param skill=homeos-manage --param agent=<agent>
+homeos --json package install homeos-manage --dry-run
+homeos --yes --json package install homeos-manage
+```
+
+The install script re-runs `gh skill install ... --force`, which is harmless
+on a skill that is already in place and records it in the installation
+state, so the package is updated and uninstalled through homeos from then
+on. Repeat for `homeos-inventory`, list both under the README's Skills
+table, and commit as usual.
+
 ### Verify against the OS when in doubt (best-effort)
 
 `homeos`'s installation state is a logical view of what its scripts
