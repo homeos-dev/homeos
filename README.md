@@ -19,7 +19,7 @@
 - **Nothing runs without confirmation** — A plan is always shown before execution. If it's not in the plan, it doesn't run.
 - **Run anywhere: Linux, macOS, Windows** — Built with Rust. Works on any OS.
 
-[Quick Tour](#quick-tour) | [Install](#install) | [Reference](#reference) | [Official Plugins](#official-plugins) | [Using with AI agents](#using-with-ai-agents) | [Plugin Development Guide](#plugin-development-guide)
+[Quick Tour](#quick-tour) | [Install](#install) | [Using with AI agents](#using-with-ai-agents) | [Official Plugins](#official-plugins) | [Plugin Development Guide](#plugin-development-guide) | [Reference](#reference)
 
 ## Quick Tour
 
@@ -269,6 +269,103 @@ gh skill install hainet50b/homeos --all --scope user --agent universal
 Agents that read their own skills directory take a different `--agent` value: for Claude Code, pass `--agent claude-code`. See `gh skill install --help` for the full list.
 
 Once the skills are in place, ask your agent to bring them under homeos management. It will turn them into homeos packages, even though they are already installed, so that homeos can update and uninstall them from now on and reproduce them on your other machines along with everything else.
+
+## Using with AI agents
+
+Once the [Agent Skills](#agent-skill) are installed, the `homeos-manage` skill teaches your AI agent how to operate homeos whenever something is to be installed, updated, or uninstalled on your machine, and the `homeos-inventory` skill tells it which applications are available to it while working on anything else.
+
+### What happens under the hood
+
+For example, asking *"Install Neovim for me"* on a Fedora machine:
+
+1. The agent locates the data directory with `homeos cd --print --json`, then runs `homeos package list --json` and `homeos plugin list --json` to see what is currently declared, and `homeos plugin list-remote --json` to find the right package manager plugin if none is in place yet (e.g. `dnf` on Fedora, `homebrew` on macOS, `winget` on Windows).
+2. It presents its proposal: install `neovim` through the `dnf` plugin, with the package's provenance checked with `dnf info` — so you can tell it is the official Fedora build and not a namesake — and the install script that would run (here `dnf -y install neovim`).
+3. Once you approve the proposal, it declares the plugin and the package with `homeos plugin add` / `homeos package add`, then shows you the execution plan with `homeos package install neovim --dry-run --json`.
+4. Once you approve that plan, it installs with `homeos --yes --json package install neovim`.
+5. It updates the repository `README.md` to reflect what's now installed, then commits everything together with `git -C <data_dir> add -A && git -C <data_dir> commit -m "Add Neovim"`.
+
+The plan and confirmation steps mean the agent cannot run anything you haven't seen. The `--json` output mode and the `--yes` flag let agents read structured state and execute approved plans on your behalf. When a newer homeos release exists, the agent tells you and asks whether to update before continuing.
+
+> [!NOTE]
+> Action scripts under `packages/` work best when **non-interactive**: pass a flag such as `-y` so the underlying tool doesn't prompt. The agent's subprocess has no controlling terminal, and a script that tries to read from stdin will fail immediately.
+>
+> `sudo` is the one operation that can't be made non-interactive — it always needs your password. When a script in the plan invokes `sudo`, the agent hands off: it asks you to run the equivalent `homeos package install <name>` in your own terminal, where you have a real tty and can type the password.
+
+## Official Plugins
+
+Official plugins are available. See each plugin's repository for details.
+
+| Name | Description |
+|------|-------------|
+| [apt](https://github.com/hainet50b/homeos-plugin-apt) | APT package manager plugin for homeos. |
+| [dnf](https://github.com/hainet50b/homeos-plugin-dnf) | DNF package manager plugin for homeos. |
+| [dnf-copr](https://github.com/hainet50b/homeos-plugin-dnf-copr) | DNF COPR plugin for homeos. |
+| [gh-skill](https://github.com/hainet50b/homeos-plugin-gh-skill) | Agent skill plugin for homeos, backed by GitHub CLI (gh skill, preview). |
+| [homebrew](https://github.com/hainet50b/homeos-plugin-homebrew) | Homebrew package manager plugin for homeos. |
+| [homebrew-cask](https://github.com/hainet50b/homeos-plugin-homebrew-cask) | Homebrew cask plugin for homeos. |
+| [homebrew-tap](https://github.com/hainet50b/homeos-plugin-homebrew-tap) | Homebrew tap plugin for homeos. |
+| [npm](https://github.com/hainet50b/homeos-plugin-npm) | npm package manager plugin for homeos. |
+| [scoop](https://github.com/hainet50b/homeos-plugin-scoop) | Scoop package manager plugin for homeos. |
+| [scoop-bucket](https://github.com/hainet50b/homeos-plugin-scoop-bucket) | Scoop bucket plugin for homeos. |
+| [winget](https://github.com/hainet50b/homeos-plugin-winget) | WinGet package manager plugin for homeos. |
+
+Built a community plugin? [Open an issue](https://github.com/hainet50b/homeos/issues/new) and we'll list it here.  
+Want a plugin that doesn't exist yet? [Request it](https://github.com/hainet50b/homeos/issues/new) — we'd love to hear what you need.
+
+## Plugin Development Guide
+
+A plugin consists of a parameter list (`plugin.yml`) and template files (`*.tmpl`). When a user runs `homeos package add` with a plugin, the templates are rendered with the user's parameters.
+
+Below is a step-by-step guide to creating a plugin.
+
+### 1. Create a plugin
+
+```sh
+$ homeos plugin add --local my-provider
+Plugin 'my-provider' created locally
+
+$ homeos plugin cd my-provider
+$ ls
+install.ps1.tmpl  plugin.yml          uninstall.sh.tmpl  update.sh.tmpl
+install.sh.tmpl   uninstall.ps1.tmpl  update.ps1.tmpl
+```
+
+### 2. Define parameters
+
+Edit `plugin.yml` to set a `description` (a one-line summary of the plugin's purpose) and define the parameters that users must provide when using your plugin:
+
+```yaml
+description: My provider plugin for homeos.
+params:
+  - name
+```
+
+### 3. Write templates
+
+Edit the template files for each action. `.sh.tmpl` files are for Linux/macOS, `.ps1.tmpl` files are for Windows. You can provide both, or only the ones relevant to your plugin's purpose — unused templates can be deleted.
+
+Templates use `{{key}}` placeholders. When a user runs `homeos package add` with your plugin, each `{{key}}` is replaced with the corresponding value from the user's `params`.
+
+For example, `install.sh.tmpl`:
+
+```sh
+#!/usr/bin/env sh
+sudo dnf install -y {{name}}
+```
+
+When a user adds a package with `--param name=neovim.x86_64`:
+
+```sh
+$ homeos package add neovim --plugin my-provider --param name=neovim.x86_64
+
+$ homeos package cat neovim
+=== install.sh ===
+#!/usr/bin/env sh
+sudo dnf install -y neovim.x86_64
+```
+
+> [!TIP]
+> Downloaded plugins can be freely edited locally. Changes only affect your machine and are not pushed upstream.
 
 ## Reference
 
@@ -937,103 +1034,6 @@ homeos completion elvish > ~/.config/elvish/lib/homeos.elv
 
 > [!NOTE]
 > `install.sh` / `install.ps1` set up completion automatically for the detected shell.
-
-## Official Plugins
-
-Official plugins are available. See each plugin's repository for details.
-
-| Name | Description |
-|------|-------------|
-| [apt](https://github.com/hainet50b/homeos-plugin-apt) | APT package manager plugin for homeos. |
-| [dnf](https://github.com/hainet50b/homeos-plugin-dnf) | DNF package manager plugin for homeos. |
-| [dnf-copr](https://github.com/hainet50b/homeos-plugin-dnf-copr) | DNF COPR plugin for homeos. |
-| [gh-skill](https://github.com/hainet50b/homeos-plugin-gh-skill) | Agent skill plugin for homeos, backed by GitHub CLI (gh skill, preview). |
-| [homebrew](https://github.com/hainet50b/homeos-plugin-homebrew) | Homebrew package manager plugin for homeos. |
-| [homebrew-cask](https://github.com/hainet50b/homeos-plugin-homebrew-cask) | Homebrew cask plugin for homeos. |
-| [homebrew-tap](https://github.com/hainet50b/homeos-plugin-homebrew-tap) | Homebrew tap plugin for homeos. |
-| [npm](https://github.com/hainet50b/homeos-plugin-npm) | npm package manager plugin for homeos. |
-| [scoop](https://github.com/hainet50b/homeos-plugin-scoop) | Scoop package manager plugin for homeos. |
-| [scoop-bucket](https://github.com/hainet50b/homeos-plugin-scoop-bucket) | Scoop bucket plugin for homeos. |
-| [winget](https://github.com/hainet50b/homeos-plugin-winget) | WinGet package manager plugin for homeos. |
-
-Built a community plugin? [Open an issue](https://github.com/hainet50b/homeos/issues/new) and we'll list it here.  
-Want a plugin that doesn't exist yet? [Request it](https://github.com/hainet50b/homeos/issues/new) — we'd love to hear what you need.
-
-## Using with AI agents
-
-Once the [Agent Skills](#agent-skill) are installed, the `homeos-manage` skill teaches your AI agent how to operate homeos whenever something is to be installed, updated, or uninstalled on your machine, and the `homeos-inventory` skill tells it which applications are available to it while working on anything else.
-
-### What happens under the hood
-
-For example, asking *"Install Neovim for me"* on a Fedora machine:
-
-1. The agent locates the data directory with `homeos cd --print --json`, then runs `homeos package list --json` and `homeos plugin list --json` to see what is currently declared, and `homeos plugin list-remote --json` to find the right package manager plugin if none is in place yet (e.g. `dnf` on Fedora, `homebrew` on macOS, `winget` on Windows).
-2. It presents its proposal: install `neovim` through the `dnf` plugin, with the package's provenance checked with `dnf info` — so you can tell it is the official Fedora build and not a namesake — and the install script that would run (here `dnf -y install neovim`).
-3. Once you approve the proposal, it declares the plugin and the package with `homeos plugin add` / `homeos package add`, then shows you the execution plan with `homeos package install neovim --dry-run --json`.
-4. Once you approve that plan, it installs with `homeos --yes --json package install neovim`.
-5. It updates the repository `README.md` to reflect what's now installed, then commits everything together with `git -C <data_dir> add -A && git -C <data_dir> commit -m "Add Neovim"`.
-
-The plan and confirmation steps mean the agent cannot run anything you haven't seen. The `--json` output mode and the `--yes` flag let agents read structured state and execute approved plans on your behalf. When a newer homeos release exists, the agent tells you and asks whether to update before continuing.
-
-> [!NOTE]
-> Action scripts under `packages/` work best when **non-interactive**: pass a flag such as `-y` so the underlying tool doesn't prompt. The agent's subprocess has no controlling terminal, and a script that tries to read from stdin will fail immediately.
->
-> `sudo` is the one operation that can't be made non-interactive — it always needs your password. When a script in the plan invokes `sudo`, the agent hands off: it asks you to run the equivalent `homeos package install <name>` in your own terminal, where you have a real tty and can type the password.
-
-## Plugin Development Guide
-
-A plugin consists of a parameter list (`plugin.yml`) and template files (`*.tmpl`). When a user runs `homeos package add` with a plugin, the templates are rendered with the user's parameters.
-
-Below is a step-by-step guide to creating a plugin.
-
-### 1. Create a plugin
-
-```sh
-$ homeos plugin add --local my-provider
-Plugin 'my-provider' created locally
-
-$ homeos plugin cd my-provider
-$ ls
-install.ps1.tmpl  plugin.yml          uninstall.sh.tmpl  update.sh.tmpl
-install.sh.tmpl   uninstall.ps1.tmpl  update.ps1.tmpl
-```
-
-### 2. Define parameters
-
-Edit `plugin.yml` to set a `description` (a one-line summary of the plugin's purpose) and define the parameters that users must provide when using your plugin:
-
-```yaml
-description: My provider plugin for homeos.
-params:
-  - name
-```
-
-### 3. Write templates
-
-Edit the template files for each action. `.sh.tmpl` files are for Linux/macOS, `.ps1.tmpl` files are for Windows. You can provide both, or only the ones relevant to your plugin's purpose — unused templates can be deleted.
-
-Templates use `{{key}}` placeholders. When a user runs `homeos package add` with your plugin, each `{{key}}` is replaced with the corresponding value from the user's `params`.
-
-For example, `install.sh.tmpl`:
-
-```sh
-#!/usr/bin/env sh
-sudo dnf install -y {{name}}
-```
-
-When a user adds a package with `--param name=neovim.x86_64`:
-
-```sh
-$ homeos package add neovim --plugin my-provider --param name=neovim.x86_64
-
-$ homeos package cat neovim
-=== install.sh ===
-#!/usr/bin/env sh
-sudo dnf install -y neovim.x86_64
-```
-
-> [!TIP]
-> Downloaded plugins can be freely edited locally. Changes only affect your machine and are not pushed upstream.
 
 ## License
 
