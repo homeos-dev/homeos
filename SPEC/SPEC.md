@@ -89,7 +89,7 @@ Three entry points deliver the same operating guide to an AI agent. All of them 
 
 | Entry | Where it lives | How the agent gets the guide |
 |---|---|---|
-| `<data_dir>/AGENTS.md` (+ `CLAUDE.md` pointer) | Data directory; written by `homeos init`, refreshed by `homeos cd` when the version marker is stale | Read automatically when the agent's working directory is the data directory (`homeos cd`, then start the agent) |
+| `<data_dir>/AGENTS.md` (+ `CLAUDE.md` pointer) | Data directory; written by `homeos init`, refreshed by `homeos cd` when the version marker is stale | Read automatically when the agent's working directory is the data directory. **Legacy fallback, slated for removal**: not offered to users in `README.md`; the skills are the only documented agent workflow |
 | `homeos-manage` skill | `skills/homeos-manage/SKILL.md` in this repository; installed per agent with `gh skill install hainet50b/homeos homeos-manage --scope user --agent <agent>` | Fires when software or an agent skill is about to be installed, updated, uninstalled, or restored on the machine; runs `homeos agents-md` and follows its stdout |
 | `homeos-inventory` skill | `skills/homeos-inventory/SKILL.md`; installed the same way | Fires at the start of shell work; reads `homeos package list --json` only — never the guide, never the update notice |
 
@@ -100,6 +100,7 @@ Invariants:
 - **Discovery convention.** `gh skill` finds skills at `skills/*/SKILL.md`, and the directory name must equal the frontmatter `name`. `gh skill publish --dry-run` validates both and runs in CI (`build.yml`, `skills` job).
 - **`homeos agents-md` works without a data directory.** It renders from the binary alone. An agent restoring a setup on a new machine reads the guide first and runs `homeos init <url>` from it, so nothing in `agents-md` — the update check included — may require or create the data directory.
 - **The update notice reaches agents through `homeos agents-md`**, not through the skills (see *Update check*), so `homeos-inventory` sessions never see it.
+- **`<data_dir>/AGENTS.local.md` is retained but slated for removal.** The guide still tells the agent to read it, and it is not gitignored, so it travels with the repository; `README.md` no longer documents it.
 
 ## Action resolution
 
