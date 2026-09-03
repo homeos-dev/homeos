@@ -503,7 +503,7 @@ fn dispatch(ctx: &context::Context, command: Commands) -> Result<(), Box<dyn std
             }
         },
         Commands::Completion { shell } => commands::completion::run(shell),
-        Commands::AgentsMd => commands::agents_md::run(),
+        Commands::AgentsMd => commands::agents_md::run(ctx),
     }
 }
 
