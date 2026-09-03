@@ -17,7 +17,7 @@ fn current_tag() -> String {
 /// the same before and after `homeos init`. Honors `HOMEOS_SKIP_UPDATE_CHECK`
 /// (any non-empty value skips the network call entirely). Any failure —
 /// timeout, DNS, unparseable tag — is silent; the injectable `writer` lets the
-/// `homeos agents-md` caller keep the notice off stdout.
+/// `homeos guide` caller keep the notice off stdout.
 pub(crate) fn check_and_notify_to_writer<W: Write>(
     writer: &mut W,
 ) -> Result<(), Box<dyn std::error::Error>> {

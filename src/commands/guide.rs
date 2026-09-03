@@ -2,7 +2,7 @@ use crate::Cli;
 use clap::{Arg, Command, CommandFactory};
 use std::io::Write;
 
-const TEMPLATE: &str = include_str!("../../templates/AGENTS.md.tmpl");
+const TEMPLATE: &str = include_str!("../../templates/guide.md.tmpl");
 
 pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     run_to(&mut std::io::stdout(), &mut std::io::stderr())
@@ -11,10 +11,10 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
 /// Write the rendered guide to `out`, then run the best-effort update check
 /// with `notice` as its writer (stderr in production).
 ///
-/// The guide is the whole of stdout — `homeos agents-md > AGENTS.md` must keep
+/// The guide is the whole of stdout — `homeos guide > guide.md` must keep
 /// producing a byte-identical file — so the notice goes to `notice` only, after
 /// the guide is flushed. The check is stateless and touches no data directory:
-/// `agents-md` is the entry point an agent reads *before* `homeos init`, so it
+/// `guide` is the entry point an agent reads *before* `homeos init`, so it
 /// must neither require nor create one. A failing check never fails the
 /// command.
 fn run_to<O: Write, N: Write>(
@@ -124,7 +124,7 @@ mod tests {
         assert!(rendered.contains("`homeos cd`"));
         assert!(rendered.contains("`homeos apply`"));
         assert!(rendered.contains("`homeos completion`"));
-        assert!(rendered.contains("`homeos agents-md`"));
+        assert!(rendered.contains("`homeos guide`"));
     }
 
     #[test]
@@ -162,7 +162,7 @@ mod tests {
 
         // Assert
         let output = String::from_utf8(out).unwrap();
-        assert!(output.starts_with("# AGENTS.md"));
+        assert!(output.starts_with("# homeos guide"));
         assert!(output.contains("`homeos init`"));
     }
 

@@ -1,6 +1,6 @@
-pub mod agents_md;
 pub mod cd;
 pub mod completion;
+pub mod guide;
 pub mod init;
 pub mod package;
 pub mod plugin;

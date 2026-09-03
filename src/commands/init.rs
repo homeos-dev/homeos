@@ -547,7 +547,7 @@ mod tests {
         run(&ctx, None, false).unwrap();
 
         // Assert — homeos init must NOT create commits; the agent walks the
-        // user through the initial commit per the `homeos agents-md`
+        // user through the initial commit per the `homeos guide`
         // "First-time setup" guide. `git rev-list HEAD` errors when no
         // commits exist.
         let output = Command::new("git")
