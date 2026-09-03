@@ -7,6 +7,23 @@ agents (Claude Code, Codex, Aider, Cursor, etc.) how to operate `homeos` on
 behalf of the user. Read it through `homeos agents-md`; do not edit a copy
 on disk — it is regenerated from the binary.
 
+## Locate the data directory first
+
+`homeos` itself works from any directory, but this guide refers to files in
+the data directory and runs git against it. Resolve that path once per
+session, before anything else:
+
+```sh
+homeos cd --print --json
+```
+
+It prints `{"path": "..."}`. Everywhere below, `<data_dir>` means that
+directory, and **every git command you run is `git -C <data_dir> ...`**. Do
+not assume your working directory is the data directory, and never run bare
+`git` there: on a project repository that would stage and commit the user's
+unrelated work. The one exception is `git config --global --get`, which
+reads the user's identity and touches no repository.
+
 ## Overview
 
 `homeos` manages application install scripts across machines. The user's
@@ -24,22 +41,6 @@ Never invent state. Read the current config with `homeos package list
 --json`, `homeos plugin list --json`, and `homeos plugin list-remote --json`
 before proposing changes, and treat that JSON as the source of truth — not
 the user's memory, not your priors, not paths cached from earlier turns.
-
-## Locate the data directory first
-
-`homeos` itself works from any directory, but this guide refers to files in
-the data directory and runs git against it, so resolve that path once per
-session before touching files or git:
-
-```sh
-homeos cd --print --json
-```
-
-It prints `{"path": "..."}`. Everywhere below, `<data_dir>` means that
-directory, and every git command is written as `git -C <data_dir> ...`. Do
-not assume your working directory is the data directory, and never run bare
-`git` there: on a project repository that would stage and commit the user's
-unrelated work.
 
 ## Speaking to the user
 
@@ -68,6 +69,11 @@ In conversation:
   bookkeeping that's better hidden.
 - **Don't reference workflow numbers** ("Workflow 5 says...") — they're
   internal labels; explain in plain terms.
+- **Never hand the user raw git.** Whether you are describing what you are
+  about to do or giving them steps to run themselves, say that the change
+  will be committed in the homeos data directory — do not write out `git`
+  command lines. A git line the user pastes into their own terminal runs
+  against whatever repository they happen to be in.
 
 The user's mental model should be *"I asked the agent to install something;
 it installed something"* — not *"I gave it rules; it followed them step by
