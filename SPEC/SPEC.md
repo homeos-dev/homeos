@@ -77,7 +77,7 @@ params:
 | Entry | Where it lives | How the agent gets the guide |
 |---|---|---|
 | `homeos-manage` skill | `skills/homeos-manage/SKILL.md` in this repository; installed per agent with `gh skill install hainet50b/homeos homeos-manage --scope user --agent <agent>` | Fires when software or an agent skill is about to be installed, updated, uninstalled, or restored on the machine; runs `homeos guide` and follows its stdout |
-| `homeos-inventory` skill | `skills/homeos-inventory/SKILL.md`; installed the same way | Fires at the start of shell work; reads `homeos package list --json` only — never the guide, never the update notice |
+| `homeos-inventory` skill | `skills/homeos-inventory/SKILL.md`; installed the same way | Fires at the start of shell work and before checking whether a tool is installed; reads `homeos package list --json` only — never the guide, never the update notice |
 
 Invariants:
 

@@ -2,19 +2,20 @@
 name: homeos-inventory
 license: MIT OR Apache-2.0
 description: >-
-  Consult at the start of any task that involves shell work: searching or
-  transforming files, writing scripts, running toolchains. homeos, the
-  user-level machine manager, is a CLI that keeps an inventory of the tools,
-  applications, and agent skills the user installed through it, and it often
-  holds tools that make the job faster or possible (ripgrep, jq,
+  Consult at the start of any task that involves shell work (searching or
+  transforming files, writing scripts, running toolchains) and whenever you
+  are about to check whether a tool is installed on this machine. homeos,
+  the user-level machine manager, is a CLI that keeps an inventory of the
+  tools, applications, and agent skills the user installed through it, and
+  it often holds tools that make the job faster or possible (ripgrep, jq,
   shellcheck, gh, mise, wsl, ...).
 ---
 
 # homeos-inventory
 
 Run `homeos package list --json` once per session and keep the result in
-mind when choosing how to do shell work. Names are homeos package names
-(`ripgrep`, not `rg`).
+mind when choosing how to do shell work and when the question is whether a
+tool is installed. Names are homeos package names (`ripgrep`, not `rg`).
 
 Only rows with `"installed": true` are available here; such an entry means
 the tool is almost certainly there, and you do not need to verify each one.
