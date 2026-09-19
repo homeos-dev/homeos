@@ -1398,7 +1398,7 @@ mod tests {
     #[test]
     fn test_validate_args_accepts_init_with_https_url() {
         // Arrange
-        let cli = Cli::try_parse_from(["homeos", "init", "https://github.com/hainet50b/dotfiles"])
+        let cli = Cli::try_parse_from(["homeos", "init", "https://github.com/homeos-dev/dotfiles"])
             .unwrap();
 
         // Act
@@ -1482,7 +1482,7 @@ mod tests {
             "plugin",
             "add",
             "dnf",
-            "https://github.com/hainet50b/homeos-plugin-dnf",
+            "https://github.com/homeos-dev/homeos-plugin-dnf",
         ])
         .unwrap();
 

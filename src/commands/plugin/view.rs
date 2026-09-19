@@ -292,7 +292,7 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -313,7 +313,7 @@ mod tests {
         let text = String::from_utf8(output).unwrap();
         assert!(text.contains("Plugin: dnf"));
         assert!(text.contains("Description: DNF package manager plugin for homeos."));
-        assert!(text.contains("URL: https://github.com/hainet50b/homeos-plugin-dnf"));
+        assert!(text.contains("URL: https://github.com/homeos-dev/homeos-plugin-dnf"));
         assert!(text.contains("Parameters:"));
         assert!(text.contains("  name"));
         assert!(text.contains("Templates:"));
@@ -583,7 +583,7 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -610,7 +610,7 @@ mod tests {
         );
         assert_eq!(
             value["url"],
-            "https://github.com/hainet50b/homeos-plugin-dnf"
+            "https://github.com/homeos-dev/homeos-plugin-dnf"
         );
         assert_eq!(value["parameters"], serde_json::json!(["name"]));
         assert!(value["templates"].is_array());

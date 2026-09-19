@@ -220,7 +220,7 @@ configured.
 ### Self-managing homeos
 
 If the user asks to manage homeos itself with homeos, read the README at
-<https://github.com/hainet50b/homeos> for current install / update /
+<https://github.com/homeos-dev/homeos> for current install / update /
 uninstall guidance — homeos is distributed via the install scripts there,
 not through any package-manager plugin.
 
@@ -240,7 +240,7 @@ with (`universal` unless they say otherwise), then:
 
 ```sh
 homeos --yes --json plugin add gh-skill                      # skip if already present
-homeos --json package add homeos-manage --plugin gh-skill --param repo=hainet50b/homeos --param skill=homeos-manage --param agent=<agent>
+homeos --json package add homeos-manage --plugin gh-skill --param repo=homeos-dev/homeos --param skill=homeos-manage --param agent=<agent>
 homeos --json package install homeos-manage --dry-run
 homeos --yes --json package install homeos-manage
 ```
@@ -366,7 +366,7 @@ identifiers are:
 | `data-dir-not-empty` | `homeos init` target directory contains stray files. |
 | `data-dir-not-found` | `homeos cd` invoked before `homeos init`. |
 | `directory-not-found` | A package/plugin subdirectory does not exist on disk. |
-| `not-found-on-github` | A plugin name does not resolve to a `hainet50b/homeos-plugin-<name>` GitHub repo. |
+| `not-found-on-github` | A plugin name does not resolve to a `homeos-dev/homeos-plugin-<name>` GitHub repo. |
 | `network-error` | A network request to GitHub failed. |
 | `package-installed` | A `package remove` target is currently recorded in `state.yml`. |
 | `internal-error` | Fallback for unclassified errors (typically I/O failures). |
@@ -556,7 +556,7 @@ homeos --yes --json plugin add dnf
 ```
 
 `plugin add` does not prompt today; `--yes` is harmless. The command resolves
-`dnf` to `https://github.com/hainet50b/homeos-plugin-dnf`, clones it, strips
+`dnf` to `https://github.com/homeos-dev/homeos-plugin-dnf`, clones it, strips
 `.git`, and registers it in `homeos.yml`.
 
 **Step 3.** Verify the package, then add it backed by the dnf plugin.
@@ -842,7 +842,7 @@ The **Notes** section is never restructured — it belongs to the user.
 # homeos-repo
 
 This repository is the source of truth for the user's software setup,
-managed by [homeos](https://github.com/hainet50b/homeos). The full
+managed by [homeos](https://github.com/homeos-dev/homeos). The full
 machine-readable definition lives in [`homeos.yml`](homeos.yml); the
 sections below are a human-friendly view kept in sync with it.
 
@@ -871,7 +871,7 @@ homeos apply
 
 | Plugin | Source | Description |
 |---|---|---|
-| [dnf](plugins/dnf/) | [hainet50b/homeos-plugin-dnf](https://github.com/hainet50b/homeos-plugin-dnf) | DNF package manager plugin for homeos. |
+| [dnf](plugins/dnf/) | [homeos-dev/homeos-plugin-dnf](https://github.com/homeos-dev/homeos-plugin-dnf) | DNF package manager plugin for homeos. |
 | [my-custom](plugins/my-custom/) | (local) | Hand-written plugin for X. |
 
 ## Notes
@@ -880,7 +880,7 @@ homeos apply
 
 ---
 
-*Managed by [homeos](https://github.com/hainet50b/homeos).*
+*Managed by [homeos](https://github.com/homeos-dev/homeos).*
 ```
 
 ### Filling in the tables

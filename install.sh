@@ -1,10 +1,10 @@
 #!/usr/bin/env sh
 # Install script for homeos
-# Usage: curl -sSf https://raw.githubusercontent.com/hainet50b/homeos/main/install.sh | sh
+# Usage: curl -sSf https://raw.githubusercontent.com/homeos-dev/homeos/main/install.sh | sh
 
 set -e
 
-REPO="hainet50b/homeos"
+REPO="homeos-dev/homeos"
 INSTALL_DIR="${HOMEOS_INSTALL_DIR:-$HOME/.local/bin}"
 
 err() {
