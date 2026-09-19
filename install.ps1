@@ -1,10 +1,10 @@
 #Requires -Version 5
 # Install script for homeos
-# Usage: irm https://raw.githubusercontent.com/hainet50b/homeos/main/install.ps1 | iex
+# Usage: irm https://raw.githubusercontent.com/homeos-dev/homeos/main/install.ps1 | iex
 
 $ErrorActionPreference = "Stop"
 
-$Repo = "hainet50b/homeos"
+$Repo = "homeos-dev/homeos"
 $InstallDir = if ($env:HOMEOS_INSTALL_DIR) { $env:HOMEOS_INSTALL_DIR } else { "$env:USERPROFILE\.homeos\bin" }
 
 function Test-AlreadyLatest {

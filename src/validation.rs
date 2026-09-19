@@ -457,7 +457,7 @@ mod tests {
     #[test]
     fn test_validate_url_accepts_https() {
         // Arrange
-        let url = "https://github.com/hainet50b/homeos-plugin-dnf";
+        let url = "https://github.com/homeos-dev/homeos-plugin-dnf";
 
         // Act
         let result = validate_url(url);
@@ -573,7 +573,7 @@ mod tests {
     #[test]
     fn test_validate_url_accepts_scp_like_github_url() {
         // Arrange — the exact form GitHub's SSH clone button copies
-        let url = "git@github.com:hainet50b/homeos-plugin-dnf.git";
+        let url = "git@github.com:homeos-dev/homeos-plugin-dnf.git";
 
         // Act
         let result = validate_url(url);

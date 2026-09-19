@@ -2,8 +2,8 @@ use std::io::Write;
 use std::time::Duration;
 
 const FETCH_TIMEOUT_MS: u64 = 1500;
-const RELEASES_URL: &str = "https://api.github.com/repos/hainet50b/homeos/releases/latest";
-const UPDATE_URL: &str = "https://github.com/hainet50b/homeos";
+const RELEASES_URL: &str = "https://api.github.com/repos/homeos-dev/homeos/releases/latest";
+const UPDATE_URL: &str = "https://github.com/homeos-dev/homeos";
 const SKIP_ENV_VAR: &str = "HOMEOS_SKIP_UPDATE_CHECK";
 
 fn current_tag() -> String {
@@ -131,11 +131,12 @@ mod tests {
         // Act
         check_and_notify_to(&mut writer, fetch).unwrap();
 
-        // Assert — single line `homeos: v<latest> available — update at <url>`.
+        // Assert — single line `homeos: v<latest> available — update at <url>`,
+        // pointing at the repository under the homeos-dev org.
         let notice = String::from_utf8(writer).unwrap();
         assert_eq!(
             notice,
-            format!("homeos: v99.0.0 available — update at {UPDATE_URL}\n")
+            "homeos: v99.0.0 available — update at https://github.com/homeos-dev/homeos\n"
         );
     }
 

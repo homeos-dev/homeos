@@ -5,7 +5,7 @@ edition = "2024"
 rust-version = "1.85"
 description = "An AI-agent-driven CLI for keeping install scripts reproducible across machines"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/hainet50b/homeos"
+repository = "https://github.com/homeos-dev/homeos"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }

@@ -136,7 +136,7 @@ pub struct RemotePlugin {
 
 fn fetch_remote_plugins() -> Result<Vec<RemotePlugin>, Box<dyn std::error::Error>> {
     let response: GitHubSearchResponse = ureq::get(
-        "https://api.github.com/search/repositories?q=homeos-plugin-+in:name+user:hainet50b",
+        "https://api.github.com/search/repositories?q=homeos-plugin-+in:name+org:homeos-dev",
     )
     .header("User-Agent", "homeos")
     .call()
@@ -261,7 +261,7 @@ fn list_remote_text<W: Write>(
 
 fn check_repo_exists(plugin: &str) -> Result<(), Box<dyn std::error::Error>> {
     let api_url = format!(
-        "https://api.github.com/repos/hainet50b/homeos-plugin-{}",
+        "https://api.github.com/repos/homeos-dev/homeos-plugin-{}",
         plugin
     );
     match ureq::get(&api_url).header("User-Agent", "homeos").call() {
@@ -276,6 +276,11 @@ fn check_repo_exists(plugin: &str) -> Result<(), Box<dyn std::error::Error>> {
         .into()),
         Err(e) => Err(HomeosError::new(reasons::NETWORK_ERROR, e.to_string()).into()),
     }
+}
+
+/// The clone URL `plugin add <name>` resolves to when no explicit URL is given.
+fn default_plugin_url(plugin: &str) -> String {
+    format!("https://github.com/homeos-dev/homeos-plugin-{}", plugin)
 }
 
 pub fn add(
@@ -366,7 +371,7 @@ where
     let auto_resolved = url.is_none();
     let url = url
         .map(|u| u.to_string())
-        .unwrap_or_else(|| format!("https://github.com/hainet50b/homeos-plugin-{}", plugin));
+        .unwrap_or_else(|| default_plugin_url(plugin));
 
     let plugins_dir = ctx.plugins_dir();
     let target = plugins_dir.join(plugin);
@@ -587,7 +592,7 @@ mod tests {
         config.plugins.insert(
             "mise".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-mise".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-mise".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -599,7 +604,7 @@ mod tests {
         // Assert
         let text = String::from_utf8(output).unwrap();
         assert!(text.contains("mise"));
-        assert!(text.contains("https://github.com/hainet50b/homeos-plugin-mise"));
+        assert!(text.contains("https://github.com/homeos-dev/homeos-plugin-mise"));
     }
 
     #[test]
@@ -611,13 +616,13 @@ mod tests {
         config.plugins.insert(
             "rustup".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-rustup".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-rustup".to_string()),
             },
         );
         config.plugins.insert(
             "mise".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-mise".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-mise".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -673,7 +678,7 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -754,7 +759,7 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -766,7 +771,7 @@ mod tests {
         // Assert — URL separator should match the widest URL value, not the header width
         let text = String::from_utf8(output).unwrap();
         let lines: Vec<&str> = text.lines().collect();
-        let url_len = "https://github.com/hainet50b/homeos-plugin-dnf".len();
+        let url_len = "https://github.com/homeos-dev/homeos-plugin-dnf".len();
         let separator_dashes_at_url_position = lines[1]
             .rsplit("  ")
             .next()
@@ -831,7 +836,7 @@ mod tests {
             Ok(vec![RemotePlugin {
                 name: "mise".to_string(),
                 description: "Manage mise tools".to_string(),
-                url: "https://github.com/hainet50b/homeos-plugin-mise".to_string(),
+                url: "https://github.com/homeos-dev/homeos-plugin-mise".to_string(),
             }])
         };
 
@@ -842,7 +847,7 @@ mod tests {
         let text = String::from_utf8(output).unwrap();
         assert!(text.contains("mise"));
         assert!(text.contains("Manage mise tools"));
-        assert!(text.contains("https://github.com/hainet50b/homeos-plugin-mise"));
+        assert!(text.contains("https://github.com/homeos-dev/homeos-plugin-mise"));
     }
 
     #[test]
@@ -854,12 +859,12 @@ mod tests {
                 RemotePlugin {
                     name: "mise".to_string(),
                     description: "Manage mise tools".to_string(),
-                    url: "https://github.com/hainet50b/homeos-plugin-mise".to_string(),
+                    url: "https://github.com/homeos-dev/homeos-plugin-mise".to_string(),
                 },
                 RemotePlugin {
                     name: "rustup".to_string(),
                     description: "Manage Rust toolchains".to_string(),
-                    url: "https://github.com/hainet50b/homeos-plugin-rustup".to_string(),
+                    url: "https://github.com/homeos-dev/homeos-plugin-rustup".to_string(),
                 },
             ])
         };
@@ -885,17 +890,17 @@ mod tests {
                 RemotePlugin {
                     name: "winget".to_string(),
                     description: "WinGet plugin".to_string(),
-                    url: "https://github.com/hainet50b/homeos-plugin-winget".to_string(),
+                    url: "https://github.com/homeos-dev/homeos-plugin-winget".to_string(),
                 },
                 RemotePlugin {
                     name: "dnf".to_string(),
                     description: "DNF plugin".to_string(),
-                    url: "https://github.com/hainet50b/homeos-plugin-dnf".to_string(),
+                    url: "https://github.com/homeos-dev/homeos-plugin-dnf".to_string(),
                 },
                 RemotePlugin {
                     name: "npm".to_string(),
                     description: "npm plugin".to_string(),
-                    url: "https://github.com/hainet50b/homeos-plugin-npm".to_string(),
+                    url: "https://github.com/homeos-dev/homeos-plugin-npm".to_string(),
                 },
             ])
         };
@@ -969,12 +974,12 @@ mod tests {
                 RemotePlugin {
                     name: "homebrew".to_string(),
                     description: "Homebrew package manager plugin for homeos.".to_string(),
-                    url: "https://github.com/hainet50b/homeos-plugin-homebrew".to_string(),
+                    url: "https://github.com/homeos-dev/homeos-plugin-homebrew".to_string(),
                 },
                 RemotePlugin {
                     name: "dnf".to_string(),
                     description: "DNF package manager plugin for homeos.".to_string(),
-                    url: "https://github.com/hainet50b/homeos-plugin-dnf".to_string(),
+                    url: "https://github.com/homeos-dev/homeos-plugin-dnf".to_string(),
                 },
             ])
         };
@@ -985,7 +990,7 @@ mod tests {
         // Assert — URL separator should match the widest URL value, not the header width
         let text = String::from_utf8(output).unwrap();
         let lines: Vec<&str> = text.lines().collect();
-        let widest_url_len = "https://github.com/hainet50b/homeos-plugin-homebrew".len();
+        let widest_url_len = "https://github.com/homeos-dev/homeos-plugin-homebrew".len();
         let separator_dashes_at_url_position = lines[1]
             .rsplit("  ")
             .next()
@@ -1157,7 +1162,7 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -1234,6 +1239,18 @@ mod tests {
 
         // Assert
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_default_plugin_url_points_at_the_homeos_dev_org() {
+        // Arrange
+        let plugin = "dnf";
+
+        // Act
+        let url = default_plugin_url(plugin);
+
+        // Assert
+        assert_eq!(url, "https://github.com/homeos-dev/homeos-plugin-dnf");
     }
 
     #[test]
@@ -1474,7 +1491,7 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -1526,7 +1543,7 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -1555,7 +1572,7 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.packages.insert(
@@ -1591,13 +1608,13 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.plugins.insert(
             "mise".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-mise".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-mise".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -1650,7 +1667,7 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -1680,7 +1697,7 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -1707,7 +1724,7 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -1739,13 +1756,13 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.plugins.insert(
             "mise".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-mise".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-mise".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -1773,7 +1790,7 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -1798,7 +1815,7 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -1824,7 +1841,7 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -1851,7 +1868,7 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -1875,7 +1892,7 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -1905,7 +1922,7 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -1934,7 +1951,7 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -1961,13 +1978,13 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.plugins.insert(
             "mise".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-mise".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-mise".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -1984,7 +2001,7 @@ mod tests {
         assert_eq!(array[0]["name"], "dnf");
         assert_eq!(
             array[0]["url"],
-            "https://github.com/hainet50b/homeos-plugin-dnf"
+            "https://github.com/homeos-dev/homeos-plugin-dnf"
         );
         assert_eq!(array[1]["name"], "mise");
     }
@@ -2040,7 +2057,7 @@ mod tests {
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         config.save(&ctx.config_path()).unwrap();
@@ -2075,12 +2092,12 @@ mod tests {
                 RemotePlugin {
                     name: "dnf".to_string(),
                     description: "DNF plugin".to_string(),
-                    url: "https://github.com/hainet50b/homeos-plugin-dnf".to_string(),
+                    url: "https://github.com/homeos-dev/homeos-plugin-dnf".to_string(),
                 },
                 RemotePlugin {
                     name: "mise".to_string(),
                     description: "Mise plugin".to_string(),
-                    url: "https://github.com/hainet50b/homeos-plugin-mise".to_string(),
+                    url: "https://github.com/homeos-dev/homeos-plugin-mise".to_string(),
                 },
             ])
         };
@@ -2097,7 +2114,7 @@ mod tests {
         assert_eq!(array[0]["description"], "DNF plugin");
         assert_eq!(
             array[0]["url"],
-            "https://github.com/hainet50b/homeos-plugin-dnf"
+            "https://github.com/homeos-dev/homeos-plugin-dnf"
         );
         assert_eq!(array[1]["name"], "mise");
     }
@@ -2127,12 +2144,12 @@ mod tests {
                 RemotePlugin {
                     name: "winget".to_string(),
                     description: "WinGet plugin".to_string(),
-                    url: "https://github.com/hainet50b/homeos-plugin-winget".to_string(),
+                    url: "https://github.com/homeos-dev/homeos-plugin-winget".to_string(),
                 },
                 RemotePlugin {
                     name: "dnf".to_string(),
                     description: "DNF plugin".to_string(),
-                    url: "https://github.com/hainet50b/homeos-plugin-dnf".to_string(),
+                    url: "https://github.com/homeos-dev/homeos-plugin-dnf".to_string(),
                 },
             ])
         };

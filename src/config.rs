@@ -549,7 +549,7 @@ packages:
 packages: {}
 plugins:
   dnf:
-    url: https://github.com/hainet50b/homeos-plugin-dnf
+    url: https://github.com/homeos-dev/homeos-plugin-dnf
 "#;
 
         // Act
@@ -559,7 +559,7 @@ plugins:
         assert_eq!(sut.plugins.len(), 1);
         assert_eq!(
             sut.plugins["dnf"].url.as_deref(),
-            Some("https://github.com/hainet50b/homeos-plugin-dnf")
+            Some("https://github.com/homeos-dev/homeos-plugin-dnf")
         );
     }
 
@@ -598,7 +598,7 @@ plugins:
             plugins: BTreeMap::from([(
                 "dnf".to_string(),
                 PluginConfig {
-                    url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                    url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
                 },
             )]),
         };
@@ -609,7 +609,7 @@ plugins:
         // Assert
         assert!(sut.contains("plugins"));
         assert!(sut.contains("dnf"));
-        assert!(sut.contains("https://github.com/hainet50b/homeos-plugin-dnf"));
+        assert!(sut.contains("https://github.com/homeos-dev/homeos-plugin-dnf"));
     }
 
     #[test]
@@ -619,7 +619,7 @@ plugins:
         config.plugins.insert(
             "dnf".to_string(),
             PluginConfig {
-                url: Some("https://github.com/hainet50b/homeos-plugin-dnf".to_string()),
+                url: Some("https://github.com/homeos-dev/homeos-plugin-dnf".to_string()),
             },
         );
         let tmp = NamedTempFile::new().unwrap();
@@ -631,7 +631,7 @@ plugins:
         // Assert
         assert_eq!(
             sut.plugins["dnf"].url.as_deref(),
-            Some("https://github.com/hainet50b/homeos-plugin-dnf")
+            Some("https://github.com/homeos-dev/homeos-plugin-dnf")
         );
     }
 
