@@ -16,7 +16,7 @@ packages:
     params: { name: neovim }
 plugins:
   dnf:
-    url: https://github.com/hainet50b/homeos-plugin-dnf
+    url: https://github.com/homeos-dev/homeos-plugin-dnf
 ```
 
 - `packages.<name>.script_aliases` redirects one action to another's script (e.g., `update` runs `install.sh`)
@@ -76,7 +76,7 @@ params:
 
 | Entry | Where it lives | How the agent gets the guide |
 |---|---|---|
-| `homeos-manage` skill | `skills/homeos-manage/SKILL.md` in this repository; installed per agent with `gh skill install hainet50b/homeos homeos-manage --scope user --agent <agent>` | Fires when software or an agent skill is about to be installed, updated, uninstalled, or restored on the machine; runs `homeos guide` and follows its stdout |
+| `homeos-manage` skill | `skills/homeos-manage/SKILL.md` in this repository; installed per agent with `gh skill install homeos-dev/homeos homeos-manage --scope user --agent <agent>` | Fires when software or an agent skill is about to be installed, updated, uninstalled, or restored on the machine; runs `homeos guide` and follows its stdout |
 | `homeos-inventory` skill | `skills/homeos-inventory/SKILL.md`; installed the same way | Fires at the start of shell work and before checking whether a tool is installed; reads `homeos package list --json` only — never the guide, never the update notice |
 
 Invariants:
@@ -181,7 +181,7 @@ Canonical `reason` identifiers (kebab-case):
 | `data-dir-not-empty` | `homeos init` target directory contains stray files |
 | `data-dir-not-found` | `homeos cd` invoked before `homeos init` |
 | `directory-not-found` | A package / plugin subdirectory does not exist on disk |
-| `not-found-on-github` | A plugin name does not resolve to a `hainet50b/homeos-plugin-<name>` GitHub repo |
+| `not-found-on-github` | A plugin name does not resolve to a `homeos-dev/homeos-plugin-<name>` GitHub repo |
 | `network-error` | A network request to GitHub failed |
 | `package-installed` | A `package remove` target is currently recorded in `state.yml` |
 | `internal-error` | Unclassified fallback (typically I/O failures) |
@@ -227,7 +227,7 @@ Error messages: an input matching neither form → `URL '{url}' must be 'scheme:
 `homeos guide` performs a best-effort update check after writing the guide to stdout:
 
 - **Per invocation**: every run fetches the latest release tag from the GitHub API (1500 ms timeout).
-- **Notify condition**: one stderr line `homeos: <latest> available — update at https://github.com/hainet50b/homeos` is emitted only when the fetched tag is **strictly newer** than the current binary's tag, comparing `vX.Y.Z` numerically (major, minor, patch). A failed fetch or a tag that does not parse as `vX.Y.Z` emits nothing — the check is best-effort and silence beats false alarms. Equality and older-than-current are silent.
+- **Notify condition**: one stderr line `homeos: <latest> available — update at https://github.com/homeos-dev/homeos` is emitted only when the fetched tag is **strictly newer** than the current binary's tag, comparing `vX.Y.Z` numerically (major, minor, patch). A failed fetch or a tag that does not parse as `vX.Y.Z` emits nothing — the check is best-effort and silence beats false alarms. Equality and older-than-current are silent.
 - **Placement**: stdout carries only the rendered guide; the notice is the sole stderr output and comes after it.
 - **Opt-out**: `HOMEOS_SKIP_UPDATE_CHECK` (any non-empty value) skips the network call entirely.
 
