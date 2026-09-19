@@ -35,7 +35,7 @@ Each error condition below is annotated with `(reason: <kebab-id>)`. The full se
 | `data-dir-not-empty` | `homeos init` target directory contains stray files. |
 | `data-dir-not-found` | `homeos cd` invoked before `homeos init`. |
 | `directory-not-found` | A package/plugin subdirectory does not exist on disk. |
-| `not-found-on-github` | A plugin name does not resolve to a `hainet50b/homeos-plugin-<name>` GitHub repo. |
+| `not-found-on-github` | A plugin name does not resolve to a `homeos-dev/homeos-plugin-<name>` GitHub repo. |
 | `network-error` | A network request to GitHub failed. |
 | `package-installed` | A `package remove` target is currently in `state.yml`. |
 | `internal-error` | Fallback for unclassified errors (typically I/O failures bubbled via `?`). |
@@ -336,7 +336,7 @@ JSON schema (one object per plugin, ordered alphabetically by name):
   {
     "name": "dnf",
     "description": "DNF package manager plugin for homeos.",
-    "url": "https://github.com/hainet50b/homeos-plugin-dnf"
+    "url": "https://github.com/homeos-dev/homeos-plugin-dnf"
   },
   {
     "name": "custom",
@@ -370,14 +370,14 @@ JSON schema (one object per plugin, ordered alphabetically by name):
   {
     "name": "dnf",
     "description": "DNF package manager plugin for homeos.",
-    "url": "https://github.com/hainet50b/homeos-plugin-dnf"
+    "url": "https://github.com/homeos-dev/homeos-plugin-dnf"
   }
 ]
 ```
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `name` | string | Plugin name (`hainet50b/homeos-plugin-<name>` with the prefix stripped) |
+| `name` | string | Plugin name (`homeos-dev/homeos-plugin-<name>` with the prefix stripped) |
 | `description` | string | GitHub repository About text; empty string when not set |
 | `url` | string | GitHub repository URL |
 
@@ -431,8 +431,8 @@ JSON schema (one object per plugin, ordered alphabetically by name):
 JSON schema (NDJSON, one object per plugin in the order processed):
 
 ```json
-{"name":"dnf","url":"https://github.com/hainet50b/homeos-plugin-dnf","status":"up-to-date"}
-{"name":"winget","url":"https://github.com/hainet50b/homeos-plugin-winget","status":"refreshed","changes":{"modified":["install.ps1.tmpl"],"added":[],"removed":[]}}
+{"name":"dnf","url":"https://github.com/homeos-dev/homeos-plugin-dnf","status":"up-to-date"}
+{"name":"winget","url":"https://github.com/homeos-dev/homeos-plugin-winget","status":"refreshed","changes":{"modified":["install.ps1.tmpl"],"added":[],"removed":[]}}
 {"name":"local-thing","url":null,"status":"local-skipped"}
 ```
 
@@ -460,7 +460,7 @@ JSON schema:
 {
   "name": "dnf",
   "description": "DNF package manager plugin for homeos.",
-  "url": "https://github.com/hainet50b/homeos-plugin-dnf",
+  "url": "https://github.com/homeos-dev/homeos-plugin-dnf",
   "parameters": ["name"],
   "templates": [
     {"filename": "install.sh.tmpl", "path": "/home/<username>/.local/share/homeos/plugins/dnf/install.sh.tmpl"},
@@ -514,7 +514,7 @@ JSON schema:
 | Condition | Dest | Output |
 |-----------|------|--------|
 | Success | stdout | Rendered operating guide (Markdown) |
-| Newer release available (check not skipped) | stderr | `homeos: {latest} available — update at https://github.com/hainet50b/homeos` (single line, written after the guide; same format as `homeos cd`) |
+| Newer release available (check not skipped) | stderr | `homeos: {latest} available — update at https://github.com/homeos-dev/homeos` (single line, written after the guide; same format as `homeos cd`) |
 
 ## Plan Display
 

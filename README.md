@@ -1,7 +1,7 @@
 ![homeos](assets/banner.png)
 
-![Build](https://github.com/hainet50b/homeos/actions/workflows/build.yml/badge.svg)
-![Release](https://img.shields.io/github/v/release/hainet50b/homeos)
+![Build](https://github.com/homeos-dev/homeos/actions/workflows/build.yml/badge.svg)
+![Release](https://img.shields.io/github/v/release/homeos-dev/homeos)
 ![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)
 
 **Making install script hell feel like *home*, with your AI agent.**
@@ -121,10 +121,10 @@ rustup 1.29.0 (28d1352db 2026-03-05)
 $ homeos plugin list-remote
 Name      Description                                  URL
 --------  -------------------------------------------  ---------------------------------------------------
-apt       APT package manager plugin for homeos.       https://github.com/hainet50b/homeos-plugin-apt
-dnf       DNF package manager plugin for homeos.       https://github.com/hainet50b/homeos-plugin-dnf
-homebrew  Homebrew package manager plugin for homeos.  https://github.com/hainet50b/homeos-plugin-homebrew
-winget    WinGet package manager plugin for homeos.    https://github.com/hainet50b/homeos-plugin-winget
+apt       APT package manager plugin for homeos.       https://github.com/homeos-dev/homeos-plugin-apt
+dnf       DNF package manager plugin for homeos.       https://github.com/homeos-dev/homeos-plugin-dnf
+homebrew  Homebrew package manager plugin for homeos.  https://github.com/homeos-dev/homeos-plugin-homebrew
+winget    WinGet package manager plugin for homeos.    https://github.com/homeos-dev/homeos-plugin-winget
 ```
 
 2. Add a plugin to your repository
@@ -234,7 +234,7 @@ done
 #### Linux / macOS
 
 ```sh
-curl -sSf https://raw.githubusercontent.com/hainet50b/homeos/main/install.sh | sh
+curl -sSf https://raw.githubusercontent.com/homeos-dev/homeos/main/install.sh | sh
 ```
 
 Installs to `~/.local/bin/homeos`. Ensure `~/.local/bin` is in your `PATH`.
@@ -242,14 +242,14 @@ Installs to `~/.local/bin/homeos`. Ensure `~/.local/bin` is in your `PATH`.
 #### Windows
 
 ```powershell
-irm https://raw.githubusercontent.com/hainet50b/homeos/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/homeos-dev/homeos/main/install.ps1 | iex
 ```
 
 Installs to `%USERPROFILE%\.homeos\bin\homeos.exe` and adds the directory to your user `PATH`.
 
 The install scripts also set up shell completion for your detected shell. If your shell needs an additional manual step, the script prints the exact instruction to follow.
 
-Alternatively, download the prebuilt binary directly from [GitHub Releases](https://github.com/hainet50b/homeos/releases) and place it on your `PATH` manually. In that case, see [Shell completion](#shell-completion) to set up completion yourself.
+Alternatively, download the prebuilt binary directly from [GitHub Releases](https://github.com/homeos-dev/homeos/releases) and place it on your `PATH` manually. In that case, see [Shell completion](#shell-completion) to set up completion yourself.
 
 ### Agent Skill
 
@@ -263,7 +263,7 @@ homeos ships its own [Agent Skills](https://agentskills.io). They live under [`s
 Place them in any directory your agent reads skills from, or install them with the GitHub CLI:
 
 ```sh
-gh skill install hainet50b/homeos --all --scope user --agent universal
+gh skill install homeos-dev/homeos --all --scope user --agent universal
 ```
 
 Agents that read their own skills directory take a different `--agent` value: for Claude Code, pass `--agent claude-code`. See `gh skill install --help` for the full list.
@@ -297,21 +297,21 @@ Official plugins are available. See each plugin's repository for details.
 
 | Name | Description |
 |------|-------------|
-| [apt](https://github.com/hainet50b/homeos-plugin-apt) | APT package manager plugin for homeos. |
-| [dnf](https://github.com/hainet50b/homeos-plugin-dnf) | DNF package manager plugin for homeos. |
-| [dnf-copr](https://github.com/hainet50b/homeos-plugin-dnf-copr) | DNF COPR plugin for homeos. |
-| [gh-extension](https://github.com/hainet50b/homeos-plugin-gh-extension) | GitHub CLI extension plugin for homeos (gh extension). |
-| [gh-skill](https://github.com/hainet50b/homeos-plugin-gh-skill) | Agent skill plugin for homeos, backed by GitHub CLI (gh skill, preview). |
-| [homebrew](https://github.com/hainet50b/homeos-plugin-homebrew) | Homebrew package manager plugin for homeos. |
-| [homebrew-cask](https://github.com/hainet50b/homeos-plugin-homebrew-cask) | Homebrew cask plugin for homeos. |
-| [homebrew-tap](https://github.com/hainet50b/homeos-plugin-homebrew-tap) | Homebrew tap plugin for homeos. |
-| [npm](https://github.com/hainet50b/homeos-plugin-npm) | npm package manager plugin for homeos. |
-| [scoop](https://github.com/hainet50b/homeos-plugin-scoop) | Scoop package manager plugin for homeos. |
-| [scoop-bucket](https://github.com/hainet50b/homeos-plugin-scoop-bucket) | Scoop bucket plugin for homeos. |
-| [winget](https://github.com/hainet50b/homeos-plugin-winget) | WinGet package manager plugin for homeos. |
+| [apt](https://github.com/homeos-dev/homeos-plugin-apt) | APT package manager plugin for homeos. |
+| [dnf](https://github.com/homeos-dev/homeos-plugin-dnf) | DNF package manager plugin for homeos. |
+| [dnf-copr](https://github.com/homeos-dev/homeos-plugin-dnf-copr) | DNF COPR plugin for homeos. |
+| [gh-extension](https://github.com/homeos-dev/homeos-plugin-gh-extension) | GitHub CLI extension plugin for homeos (gh extension). |
+| [gh-skill](https://github.com/homeos-dev/homeos-plugin-gh-skill) | Agent skill plugin for homeos, backed by GitHub CLI (gh skill, preview). |
+| [homebrew](https://github.com/homeos-dev/homeos-plugin-homebrew) | Homebrew package manager plugin for homeos. |
+| [homebrew-cask](https://github.com/homeos-dev/homeos-plugin-homebrew-cask) | Homebrew cask plugin for homeos. |
+| [homebrew-tap](https://github.com/homeos-dev/homeos-plugin-homebrew-tap) | Homebrew tap plugin for homeos. |
+| [npm](https://github.com/homeos-dev/homeos-plugin-npm) | npm package manager plugin for homeos. |
+| [scoop](https://github.com/homeos-dev/homeos-plugin-scoop) | Scoop package manager plugin for homeos. |
+| [scoop-bucket](https://github.com/homeos-dev/homeos-plugin-scoop-bucket) | Scoop bucket plugin for homeos. |
+| [winget](https://github.com/homeos-dev/homeos-plugin-winget) | WinGet package manager plugin for homeos. |
 
-Built a community plugin? [Open an issue](https://github.com/hainet50b/homeos/issues/new) and we'll list it here.  
-Want a plugin that doesn't exist yet? [Request it](https://github.com/hainet50b/homeos/issues/new) — we'd love to hear what you need.
+Built a community plugin? [Open an issue](https://github.com/homeos-dev/homeos/issues/new) and we'll list it here.  
+Want a plugin that doesn't exist yet? [Request it](https://github.com/homeos-dev/homeos/issues/new) — we'd love to hear what you need.
 
 ## Plugin Development Guide
 
@@ -451,9 +451,9 @@ packages:
 
 plugins:
   dnf:
-    url: https://github.com/hainet50b/homeos-plugin-dnf
+    url: https://github.com/homeos-dev/homeos-plugin-dnf
   npm:
-    url: https://github.com/hainet50b/homeos-plugin-npm
+    url: https://github.com/homeos-dev/homeos-plugin-npm
 ```
 
 - `depends_on` — declare dependencies on other packages.
@@ -856,7 +856,7 @@ Displays a table with plugin name, description, and URL. `Description` is loaded
 $ homeos plugin list
 Name  Description                              URL
 ----  ---------------------------------------  ----------------------------------------------
-dnf   DNF package manager plugin for homeos.   https://github.com/hainet50b/homeos-plugin-dnf
+dnf   DNF package manager plugin for homeos.   https://github.com/homeos-dev/homeos-plugin-dnf
 ```
 
 #### `homeos plugin list-remote`
@@ -875,10 +875,10 @@ Displays name, description, and URL for each official plugin.
 $ homeos plugin list-remote
 Name      Description                                  URL
 --------  -------------------------------------------  ---------------------------------------------------
-apt       APT package manager plugin for homeos.       https://github.com/hainet50b/homeos-plugin-apt
-dnf       DNF package manager plugin for homeos.       https://github.com/hainet50b/homeos-plugin-dnf
-homebrew  Homebrew package manager plugin for homeos.  https://github.com/hainet50b/homeos-plugin-homebrew
-winget    WinGet package manager plugin for homeos.    https://github.com/hainet50b/homeos-plugin-winget
+apt       APT package manager plugin for homeos.       https://github.com/homeos-dev/homeos-plugin-apt
+dnf       DNF package manager plugin for homeos.       https://github.com/homeos-dev/homeos-plugin-dnf
+homebrew  Homebrew package manager plugin for homeos.  https://github.com/homeos-dev/homeos-plugin-homebrew
+winget    WinGet package manager plugin for homeos.    https://github.com/homeos-dev/homeos-plugin-winget
 ```
 
 #### `homeos plugin add`
@@ -945,7 +945,7 @@ Shows description, URL (or `(local)`), parameters, and action templates.
 $ homeos plugin info dnf
 Plugin: dnf
 Description: DNF package manager plugin for homeos.
-URL: https://github.com/hainet50b/homeos-plugin-dnf
+URL: https://github.com/homeos-dev/homeos-plugin-dnf
 Parameters:
   name
 Templates:
