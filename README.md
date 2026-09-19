@@ -305,6 +305,7 @@ Official plugins are available. See each plugin's repository for details.
 | [homebrew](https://github.com/homeos-dev/homeos-plugin-homebrew) | Homebrew package manager plugin for homeos. |
 | [homebrew-cask](https://github.com/homeos-dev/homeos-plugin-homebrew-cask) | Homebrew cask plugin for homeos. |
 | [homebrew-tap](https://github.com/homeos-dev/homeos-plugin-homebrew-tap) | Homebrew tap plugin for homeos. |
+| [mise](https://github.com/homeos-dev/homeos-plugin-mise) | mise tool version manager plugin for homeos. |
 | [npm](https://github.com/homeos-dev/homeos-plugin-npm) | npm package manager plugin for homeos. |
 | [scoop](https://github.com/homeos-dev/homeos-plugin-scoop) | Scoop package manager plugin for homeos. |
 | [scoop-bucket](https://github.com/homeos-dev/homeos-plugin-scoop-bucket) | Scoop bucket plugin for homeos. |
