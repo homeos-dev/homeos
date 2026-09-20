@@ -298,6 +298,7 @@ Official plugins are available. See each plugin's repository for details.
 | Name | Description |
 |------|-------------|
 | [apt](https://github.com/homeos-dev/homeos-plugin-apt) | APT package manager plugin for homeos. |
+| [aws-agent-toolkit](https://github.com/homeos-dev/homeos-plugin-aws-agent-toolkit) | Agent skill plugin for homeos, backed by the AWS CLI (aws agent-toolkit). |
 | [dnf](https://github.com/homeos-dev/homeos-plugin-dnf) | DNF package manager plugin for homeos. |
 | [dnf-copr](https://github.com/homeos-dev/homeos-plugin-dnf-copr) | DNF COPR plugin for homeos. |
 | [gh-extension](https://github.com/homeos-dev/homeos-plugin-gh-extension) | GitHub CLI extension plugin for homeos (gh extension). |
